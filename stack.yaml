@@ -1,0 +1,16 @@
+resolver: lts-9.0
+packages:
+- .
+extra-deps: []
+flags: {}
+extra-package-dbs: []
+nix:
+  enable: true
+  packages:
+    - zlib
+    - pkgconfig
+    - cairo
+    - pango
+    - gnome3.gtk
+    - xorg.libX11
+    - xlibs.xproto
