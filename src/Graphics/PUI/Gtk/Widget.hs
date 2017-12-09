@@ -1,6 +1,7 @@
 {-# LANGUAGE
   FlexibleInstances
 , MultiParamTypeClasses
+, TypeFamilies
 , TypeSynonymInstances
  #-}
 
@@ -17,6 +18,7 @@ module Graphics.PUI.Gtk.Widget
   , leftof, topof
   , text
   , fill
+  , box
   ) where
 
 import Control.Monad.Reader
@@ -58,6 +60,16 @@ topof a b = mkFlow $ \w h -> do
   () <- fromFlow b w (h - h1)
   lift restore
   return ()
+
+box :: (WidgetSize w h, ValueOf w ~ Double, ValueOf h ~ Double) => Widget w h PUI () -> Widget w h PUI ()
+box x = Widget $ \w h -> do
+  col <- asks puiColor1
+  (bw, bh, rw, rh) <- widgetSize w h x
+  lift $ do
+    setSourceRGB' col
+    rectangle 0 0 bw bh
+    stroke
+  return (rw, rh, ())
 
 drawFlowWidget :: GtkFlowWidget -> Dim -> Dim -> PUIOptions -> Render ()
 drawFlowWidget widget w h opts = runReaderT (fromFlow widget w h) opts
