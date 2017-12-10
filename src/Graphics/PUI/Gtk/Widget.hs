@@ -3,6 +3,7 @@
 , MultiParamTypeClasses
 , TypeFamilies
 , TypeSynonymInstances
+, ScopedTypeVariables
  #-}
 
 module Graphics.PUI.Gtk.Widget
@@ -16,6 +17,7 @@ module Graphics.PUI.Gtk.Widget
   , setSourceRGB'
 
   , leftof, topof
+  , alignleft, aligntop
   , text
   , fill
   , box
@@ -43,28 +45,39 @@ data PUIOptions = PUIOptions
 
 type PUI = ReaderT PUIOptions Render
 
-leftof :: GtkFixedWidget -> GtkFlowWidget -> GtkFixedHeightWidget
-leftof a b = mkFixedHeight $ \w -> do
+leftof :: forall h. (VarDim h, ValueOf h ~ Dim)
+       => Widget (F Dim) h PUI () -> Widget (V Dim) (V Dim) PUI () -> Widget (V Dim) h PUI ()
+leftof a b = Widget $ \w h -> do
   lift save
-  (w1, h1, ()) <- fromFixed a
+  (w1, h1, ()) <- fromWidget a () h
   lift $ translate w1 0
-  () <- fromFlow b (w - w1) h1
+  () <- fromFlow b (w - w1) (valueOf (Proxy :: Proxy h) h h1)
   lift restore
-  return (h1, ())
+  return ((), h1, ())
 
-topof :: GtkFixedHeightWidget -> GtkFlowWidget -> GtkFlowWidget
-topof a b = mkFlow $ \w h -> do
+topof :: forall w. (VarDim w, ValueOf w ~ Dim)
+      => Widget w (F Dim) PUI () -> Widget (V Dim) (V Dim) PUI () -> Widget w (V Dim) PUI ()
+topof a b = Widget $ \w h -> do
   lift save
-  (h1, ()) <- fromFixedHeight a w
+  (w1, h1, ()) <- fromWidget a w ()
   lift $ translate 0 h1
-  () <- fromFlow b w (h - h1)
+  () <- fromFlow b (valueOf (Proxy :: Proxy w) w w1) (h - h1)
   lift restore
-  return ()
+  return (w1, (), ())
 
-box :: (WidgetSize w h, ValueOf w ~ Double, ValueOf h ~ Double) => Widget w h PUI () -> Widget w h PUI ()
+alignleft :: (VarDim h, ValueOf h ~ Dim) => Widget (F Dim) h PUI () -> Widget (V Dim) h PUI ()
+alignleft x = x `leftof` fill
+
+aligntop :: (VarDim w, ValueOf w ~ Dim) => Widget w (F Dim) PUI () -> Widget w (V Dim) PUI ()
+aligntop x = x `topof` fill
+
+box :: forall w h. (VarDim w, VarDim h, ValueOf w ~ Dim, ValueOf h ~ Dim)
+    => Widget w h PUI () -> Widget w h PUI ()
 box x = Widget $ \w h -> do
   col <- asks puiColor1
-  (bw, bh, rw, rh) <- widgetSize w h x
+  (rw, rh, ()) <- fromWidget x w h
+  let bw = valueOf (Proxy :: Proxy w) w rw
+      bh = valueOf (Proxy :: Proxy h) h rh
   lift $ do
     setSourceRGB' col
     rectangle 0 0 bw bh
