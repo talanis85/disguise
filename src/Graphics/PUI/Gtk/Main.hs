@@ -19,6 +19,7 @@ ioMain initModel updateModel widget = do
         { styleFont = font
         , styleColor0 = RGB 0 0 0
         , styleColor1 = RGB 1 1 1
+        , styleColor2 = RGB 1 0 0
         }
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew

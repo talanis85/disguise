@@ -34,6 +34,7 @@ data Style = Style
   { styleFont :: FontDescription
   , styleColor0 :: RGB
   , styleColor1 :: RGB
+  , styleColor2 :: RGB
   }
 
 type StyleT m = ReaderT Style m
