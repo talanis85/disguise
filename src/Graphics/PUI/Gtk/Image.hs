@@ -6,6 +6,7 @@ module Graphics.PUI.Gtk.Image
   , fixedImage
   , loadImage
   , loadImageDefault
+  , emptyImage
   , CairoImage
   ) where
 
@@ -22,6 +23,9 @@ import Graphics.PUI.Widget
 import Graphics.Rendering.Cairo
 
 data CairoImage = CairoImage Surface
+
+emptyImage :: IO CairoImage
+emptyImage = CairoImage <$> createImageSurface FormatRGB24 1 1
 
 vector8to32 :: Vector Word8 -> Vector Word32
 vector8to32 v = V.generate (V.length v `div` 3) f
