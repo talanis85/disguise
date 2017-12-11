@@ -16,14 +16,14 @@ module Graphics.PUI.Gtk.Widget
   , leftof, topof
   , alignleft, aligntop
   , text
-  , fill
+  , space
   , box
   ) where
 
 import Control.Monad.Reader
 import Data.Functor.Identity
 import Graphics.PUI.Widget
-import Graphics.Rendering.Cairo hiding (fill)
+import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
 
 type Dim = Double
@@ -56,10 +56,10 @@ topof a b = Widget $ \w h -> do
   return (w1, (), (retain r1 >> translate 0 h1 >> retain r2))
 
 alignleft :: (Monad f, VarDim h, ValueOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
-alignleft x = x `leftof` fill
+alignleft x = x `leftof` space
 
 aligntop :: (Monad f, VarDim w, ValueOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
-aligntop x = x `topof` fill
+aligntop x = x `topof` space
 
 box :: forall f w h. (Monad f, VarDim w, VarDim h, ValueOf w ~ Dim, ValueOf h ~ Dim)
     => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
@@ -93,5 +93,5 @@ text str = mkFixed $ do
         showLayout layout
   return (w, h, drawit)
 
-fill :: (Applicative f) => CairoWidget (V w) (V h) f
-fill = mkFlow $ \w h -> pure (return ())
+space :: (Applicative f) => CairoWidget (V w) (V h) f
+space = mkFlow $ \w h -> pure (return ())
