@@ -10,7 +10,7 @@ import Graphics.PUI.Widget
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.UI.Gtk as G
 
-ioMain :: model -> (Char -> model -> IO model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
+ioMain :: model -> (Char -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
 ioMain initModel updateModel widget = do
   G.initGUI
   modelRef <- newIORef initModel
@@ -29,7 +29,8 @@ ioMain initModel updateModel widget = do
     setSourceRGB' (styleColor0 style)
     C.fill
     model <- liftIO $ readIORef modelRef
-    drawit <- liftIO $ drawFlowWidget (widget model) (fromIntegral w) (fromIntegral h) style
+    widget' <- liftIO $ widget model
+    drawit <- liftIO $ drawFlowWidget widget' (fromIntegral w) (fromIntegral h) style
     drawit
   window `G.on` G.deleteEvent $ do
     liftIO G.mainQuit
@@ -42,11 +43,11 @@ ioMain initModel updateModel widget = do
       Just c  -> liftIO $ do
         model <- readIORef modelRef
         model' <- updateModel c model
-        writeIORef modelRef model
+        writeIORef modelRef model'
         G.widgetQueueDraw drawingArea
         return True
   G.widgetShowAll window
   G.mainGUI
 
 pureMain :: model -> (Char -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
-pureMain initModel updateModel widget = ioMain initModel (fmap (fmap return) updateModel) widget
+pureMain initModel updateModel widget = ioMain initModel (fmap (fmap return) updateModel) (return . widget)
