@@ -8,12 +8,9 @@
 
 module Graphics.PUI.Gtk.Widget
   ( Dim
-  , GtkFlowWidget
-  , GtkFixedWidget
-  , GtkFixedHeightWidget
-  , GtkFixedWidthWidget
+  , CairoWidget
   , drawFlowWidget
-  , PUI, PUIOptions (..), RGB (..)
+  , StyleT, Style (..), RGB (..)
   , setSourceRGB'
 
   , leftof, topof
@@ -30,77 +27,71 @@ import Graphics.Rendering.Cairo hiding (fill)
 import Graphics.Rendering.Pango
 
 type Dim = Double
-type GtkFlowWidget = FlowWidget Dim PUI ()
-type GtkFixedWidget = FixedWidget Dim PUI ()
-type GtkFixedWidthWidget = FixedWidthWidget Dim PUI ()
-type GtkFixedHeightWidget = FixedHeightWidget Dim PUI ()
 
 data RGB = RGB Double Double Double
 
-data PUIOptions = PUIOptions
-  { puiFont :: FontDescription
-  , puiColor0 :: RGB
-  , puiColor1 :: RGB
+data Style = Style
+  { styleFont :: FontDescription
+  , styleColor0 :: RGB
+  , styleColor1 :: RGB
   }
 
-type PUI = ReaderT PUIOptions Render
+type StyleT m = ReaderT Style m
+type CairoWidget w h f = Widget w h f (Render ())
 
-leftof :: forall h. (VarDim h, ValueOf h ~ Dim)
-       => Widget (F Dim) h PUI () -> Widget (V Dim) (V Dim) PUI () -> Widget (V Dim) h PUI ()
+retain r = save >> r >> restore
+
+leftof :: forall f h. (Monad f, VarDim h, ValueOf h ~ Dim)
+       => CairoWidget (F Dim) h f -> CairoWidget (V Dim) (V Dim) f -> CairoWidget (V Dim) h f
 leftof a b = Widget $ \w h -> do
-  lift save
-  (w1, h1, ()) <- fromWidget a () h
-  lift $ translate w1 0
-  () <- fromFlow b (w - w1) (valueOf (Proxy :: Proxy h) h h1)
-  lift restore
-  return ((), h1, ())
+  (w1, h1, r1) <- fromWidget a () h
+  r2 <- fromFlow b (w - w1) (valueOf (Proxy :: Proxy h) h h1)
+  return ((), h1, (retain r1 >> translate w1 0 >> retain r2))
 
-topof :: forall w. (VarDim w, ValueOf w ~ Dim)
-      => Widget w (F Dim) PUI () -> Widget (V Dim) (V Dim) PUI () -> Widget w (V Dim) PUI ()
+topof :: forall f w. (Monad f, VarDim w, ValueOf w ~ Dim)
+      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) (V Dim) f -> CairoWidget w (V Dim) f
 topof a b = Widget $ \w h -> do
-  lift save
-  (w1, h1, ()) <- fromWidget a w ()
-  lift $ translate 0 h1
-  () <- fromFlow b (valueOf (Proxy :: Proxy w) w w1) (h - h1)
-  lift restore
-  return (w1, (), ())
+  (w1, h1, r1) <- fromWidget a w ()
+  r2 <- fromFlow b (valueOf (Proxy :: Proxy w) w w1) (h - h1)
+  return (w1, (), (retain r1 >> translate 0 h1 >> retain r2))
 
-alignleft :: (VarDim h, ValueOf h ~ Dim) => Widget (F Dim) h PUI () -> Widget (V Dim) h PUI ()
+alignleft :: (Monad f, VarDim h, ValueOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
 alignleft x = x `leftof` fill
 
-aligntop :: (VarDim w, ValueOf w ~ Dim) => Widget w (F Dim) PUI () -> Widget w (V Dim) PUI ()
+aligntop :: (Monad f, VarDim w, ValueOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
 aligntop x = x `topof` fill
 
-box :: forall w h. (VarDim w, VarDim h, ValueOf w ~ Dim, ValueOf h ~ Dim)
-    => Widget w h PUI () -> Widget w h PUI ()
+box :: forall f w h. (Monad f, VarDim w, VarDim h, ValueOf w ~ Dim, ValueOf h ~ Dim)
+    => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
 box x = Widget $ \w h -> do
-  col <- asks puiColor1
-  (rw, rh, ()) <- fromWidget x w h
+  (rw, rh, r) <- fromWidget x w h
+  col <- asks styleColor1
   let bw = valueOf (Proxy :: Proxy w) w rw
       bh = valueOf (Proxy :: Proxy h) h rh
-  lift $ do
-    setSourceRGB' col
-    rectangle 0 0 bw bh
-    stroke
-  return (rw, rh, ())
+      drawit = do
+        setSourceRGB' col
+        rectangle 0 0 bw bh
+        stroke
+        retain r
+  return (rw, rh, drawit)
 
-drawFlowWidget :: GtkFlowWidget -> Dim -> Dim -> PUIOptions -> Render ()
-drawFlowWidget widget w h opts = runReaderT (fromFlow widget w h) opts
+drawFlowWidget :: (Functor f) => CairoWidget (V w) (V h) (StyleT f) -> w -> h -> Style -> f (Render ())
+drawFlowWidget widget w h style = fromFlow (hoistWidget (\x -> runReaderT x style) widget) w h
 
 setSourceRGB' (RGB a b c) = setSourceRGB a b c
 
-text :: String -> GtkFixedWidget
+text :: (MonadIO f) => String -> CairoWidget (F Dim) (F Dim) (StyleT f)
 text str = mkFixed $ do
-  fontdesc <- asks puiFont
-  textcolor <- asks puiColor1
-  lift $ do
-    layout <- createLayout str
-    liftIO $ layoutSetFontDescription layout (Just fontdesc)
-    setSourceRGB' textcolor
-    showLayout layout
-    (_, PangoRectangle x y w h) <- liftIO $ layoutGetExtents layout
-    return (w, h, ())
+  fontdesc <- asks styleFont
+  textcolor <- asks styleColor1
+  context <- liftIO $ cairoCreateContext Nothing
+  layout <- liftIO $ layoutText context str
+  liftIO $ layoutSetFontDescription layout (Just fontdesc)
+  (_, PangoRectangle x y w h) <- liftIO $ layoutGetExtents layout
+  let drawit = do
+        setSourceRGB' textcolor
+        showLayout layout
+  return (w, h, drawit)
 
-fill :: GtkFlowWidget
-fill = mkFlow $ \w h -> do
-  return ()
+fill :: (Applicative f) => CairoWidget (V w) (V h) f
+fill = mkFlow $ \w h -> pure (return ())

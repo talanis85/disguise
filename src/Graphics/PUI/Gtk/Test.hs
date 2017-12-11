@@ -5,18 +5,19 @@ module Graphics.PUI.Gtk.Test
 import Control.Monad.Trans
 import Data.IORef
 import Graphics.PUI.Gtk.Widget
+import Graphics.PUI.Widget
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.UI.Gtk as G
 
-testWindow :: model -> (Char -> model -> model) -> (model -> GtkFlowWidget) -> IO ()
+testWindow :: model -> (Char -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
 testWindow initModel updateModel widget = do
   G.initGUI
   modelRef <- newIORef initModel
   font <- G.fontDescriptionFromString "monospace 8"
-  let options = PUIOptions
-        { puiFont = font
-        , puiColor0 = RGB 0 0 0
-        , puiColor1 = RGB 1 1 1
+  let style = Style
+        { styleFont = font
+        , styleColor0 = RGB 0 0 0
+        , styleColor1 = RGB 1 1 1
         }
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew
@@ -24,10 +25,11 @@ testWindow initModel updateModel widget = do
   drawingArea `G.on` G.draw $ do
     G.Rectangle x y w h <- liftIO $ G.widgetGetAllocation drawingArea
     C.rectangle 0 0 (fromIntegral w) (fromIntegral h)
-    setSourceRGB' (puiColor0 options)
+    setSourceRGB' (styleColor0 style)
     C.fill
     model <- liftIO $ readIORef modelRef
-    drawFlowWidget (widget model) (fromIntegral w) (fromIntegral h) options
+    drawit <- liftIO $ drawFlowWidget (widget model) (fromIntegral w) (fromIntegral h) style
+    drawit
   window `G.on` G.deleteEvent $ do
     liftIO G.mainQuit
     return False
