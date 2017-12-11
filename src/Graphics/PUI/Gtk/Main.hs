@@ -1,6 +1,7 @@
 module Graphics.PUI.Gtk.Main
   ( ioMain
   , pureMain
+  , quit
   ) where
 
 import Control.Monad.Trans
@@ -9,6 +10,9 @@ import Graphics.PUI.Gtk.Widget
 import Graphics.PUI.Widget
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.UI.Gtk as G
+
+quit :: IO ()
+quit = G.mainQuit
 
 ioMain :: model -> (Char -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
 ioMain initModel updateModel widget = do
