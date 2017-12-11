@@ -1,5 +1,6 @@
-module Graphics.PUI.Gtk.Test
-  ( testWindow
+module Graphics.PUI.Gtk.Main
+  ( ioMain
+  , pureMain
   ) where
 
 import Control.Monad.Trans
@@ -9,8 +10,8 @@ import Graphics.PUI.Widget
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.UI.Gtk as G
 
-testWindow :: model -> (Char -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
-testWindow initModel updateModel widget = do
+ioMain :: model -> (Char -> model -> IO model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
+ioMain initModel updateModel widget = do
   G.initGUI
   modelRef <- newIORef initModel
   font <- G.fontDescriptionFromString "monospace 8"
@@ -38,9 +39,14 @@ testWindow initModel updateModel widget = do
     let keychar = G.keyToChar keyval
     case keychar of
       Nothing -> return False
-      Just c  -> do
-        liftIO $ modifyIORef modelRef (updateModel c)
-        liftIO $ G.widgetQueueDraw drawingArea
+      Just c  -> liftIO $ do
+        model <- readIORef modelRef
+        model' <- updateModel c model
+        writeIORef modelRef model
+        G.widgetQueueDraw drawingArea
         return True
   G.widgetShowAll window
   G.mainGUI
+
+pureMain :: model -> (Char -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
+pureMain initModel updateModel widget = ioMain initModel (fmap (fmap return) updateModel) widget

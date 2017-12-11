@@ -1,8 +1,6 @@
 module Main where
 
-import Graphics.PUI.Gtk.Test
-import Graphics.PUI.Gtk.Widget
-import Graphics.PUI.Gtk.Image
+import Graphics.PUI.Gtk
 
 main :: IO ()
 main = do
@@ -12,4 +10,4 @@ main = do
                       | otherwise = m
       testWidget n = (box (alignleft (text ("Hallo Welt " ++ show n))))
                      `topof` (aligntop (alignleft (fixedImage img)))
-  testWindow initModel updateModel testWidget
+  pureMain initModel updateModel testWidget

@@ -21,7 +21,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Graphics.PUI.Gtk
                      , Graphics.PUI.Gtk.Image
-                     , Graphics.PUI.Gtk.Test
+                     , Graphics.PUI.Gtk.Main
                      , Graphics.PUI.Gtk.Widget
                      , Graphics.PUI.Widget
   build-depends:       base >= 4.7 && < 5
