@@ -5,6 +5,7 @@ module Graphics.PUI.Gtk.Image
   ( flowImage
   , fixedImage
   , loadImage
+  , loadImageDefault
   , CairoImage
   ) where
 
@@ -67,3 +68,10 @@ loadImage fp = do
       surface <- createImageSurface FormatRGB24 (imageWidth img) (imageHeight img)
       copyVectorToSurface (imageData img) surface
       return (Right (CairoImage surface))
+
+loadImageDefault :: FilePath -> IO CairoImage
+loadImageDefault fp = do
+  img <- loadImage fp
+  case img of
+    Left err -> CairoImage <$> createImageSurface FormatRGB24 1 1
+    Right img' -> return img'
