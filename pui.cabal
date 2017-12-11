@@ -19,7 +19,8 @@ description:         Please see the README on Github at <https://github.com/gith
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.PUI.Gtk.Image
+  exposed-modules:     Graphics.PUI.Gtk
+                     , Graphics.PUI.Gtk.Image
                      , Graphics.PUI.Gtk.Test
                      , Graphics.PUI.Gtk.Widget
                      , Graphics.PUI.Widget
