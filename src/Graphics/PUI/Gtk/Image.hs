@@ -15,24 +15,24 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Array.MArray
 import Data.Bits
-import Data.Vector.Storable as V
+import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Ptr
 import Graphics.PUI.Gtk.Widget
 import Graphics.PUI.Widget
 import Graphics.Rendering.Cairo
 
-data CairoImage = CairoImage Surface
+newtype CairoImage = CairoImage Surface
 
 emptyImage :: IO CairoImage
 emptyImage = CairoImage <$> createImageSurface FormatRGB24 1 1
 
-vector8to32 :: Vector Word8 -> Vector Word32
+vector8to32 :: V.Vector Word8 -> V.Vector Word32
 vector8to32 v = V.generate (V.length v `div` 3) f
   where f i = let ix i = fromIntegral (v V.! i)
               in shiftL (ix (i * 3)) 16 + shiftL (ix (i * 3 + 1)) 8 + shiftL (ix (i * 3 + 2)) 0
 
-copyVectorToSurface :: Vector Word8 -> Surface -> IO ()
+copyVectorToSurface :: V.Vector Word8 -> Surface -> IO ()
 copyVectorToSurface vec surface = do
   sdata <- imageSurfaceGetPixels surface :: IO (SurfaceData Int Word32)
   let copyWord i x = writeArray sdata i x >> return (i + 1)
