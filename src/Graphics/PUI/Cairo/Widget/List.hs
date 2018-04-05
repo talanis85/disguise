@@ -1,10 +1,10 @@
-module Graphics.PUI.Gtk.List
+module Graphics.PUI.Cairo.Widget.List
   ( list
   ) where
 
 import Control.Monad.Reader
 import qualified Data.List.Zipper as Z
-import Graphics.PUI.Gtk.Widget
+import Graphics.PUI.Cairo.Widget
 import Graphics.PUI.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango

@@ -1,21 +1,36 @@
-{-# LANGUAGE
-  RankNTypes
-, MultiParamTypeClasses
-, GADTs
-, TypeFamilies
-, TypeSynonymInstances
-, FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
+{- |
+Module      : Graphics.PUI.Widget
+Description : Definition of a widget
+Copyright   : Philip Kranz, 2018
+License     : GPL-3
+Maintainer  : pk@pmlk.net
+Stability   : experimental
+-}
 module Graphics.PUI.Widget
-    ( Widget (..)
-    , FlowWidget, FixedWidget, FixedWidthWidget, FixedHeightWidget
-    , mkFlow, mkFixed, mkFixedWidth, mkFixedHeight
-    , fromFlow, fromFixed, fromFixedWidth, fromFixedHeight
-    , hoistWidget
-    , fixh, fixw
+    ( 
+      -- * Definition of widgets
+      Widget (..)
     , F, V
-    , Proxy (Proxy)
     , VarDim (..)
+      -- * Type aliases for the 4 flavours of widgets
+    , FlowWidget, FixedWidget, FixedWidthWidget, FixedHeightWidget
+      -- * Functions to create widgets
+    , mkFlow, mkFixed, mkFixedWidth, mkFixedHeight
+      -- * Functions to match against widgets
+    , fromFlow, fromFixed, fromFixedWidth, fromFixedHeight
+      -- * Transformations between different flavours
+    , fixh, fixw
+      -- * Transformation of the underlying functor
+    , hoistWidget
+      -- * Re-exports
+    , Proxy (Proxy)
     ) where
 
 import Control.Applicative (Applicative, (<$>), (<*>), pure, liftA2)
@@ -24,7 +39,9 @@ import Data.Bifunctor
 import Data.Proxy
 import Data.Traversable (sequenceA)
 
+-- | A fixed size of the given type
 data F dim
+-- | A variable size of the given type
 data V dim
 
 class VarDim a where
@@ -48,6 +65,16 @@ instance VarDim (V dim) where
 
   valueOf _ dim () = dim
 
+-- | A widget is a function from up to two dimensions (which denote the requested size of the widget) to the
+--   rest of the dimensions (which were left up to the widget to determine, if any) and a value which
+--   represents the actual screen representation of the widget.
+--
+--   If we leave out the type-level machinery here, we can think of it as one of:
+--
+--   * @ () -> () -> f (w, h, a) @ (fixed width and height)
+--   * @ w  -> h  -> f ((), (), a) @ (dynamic width and height)
+--   * @ w  -> () -> f ((), h, a) @ (dynamic width and fixed height)
+--   * @ () -> h  -> f (w, (), a) @ (fixed width and dynamic height)
 data Widget w h f a = Widget { fromWidget :: InputOf w -> InputOf h -> f (OutputOf w, OutputOf h, a) }
 
 instance (Functor f) => Functor (Widget w h f) where
@@ -58,6 +85,7 @@ type FixedWidget dim       = Widget (F dim) (F dim)
 type FixedWidthWidget dim  = Widget (F dim) (V dim)
 type FixedHeightWidget dim = Widget (V dim) (F dim)
 
+-- | See @hoist@ from the MFunctor package
 hoistWidget :: (forall a. f a -> g a) -> Widget w h f a -> Widget w h g a
 hoistWidget f (Widget wid) = Widget $ fmap (fmap f) wid
 
@@ -85,8 +113,10 @@ mkFixedWidth widget = Widget $ \() h -> fmap (\(w, x) -> (w, (), x)) (widget h)
 mkFixedHeight :: (Functor f) => (w -> f (h, a)) -> Widget (V w) (F h) f a
 mkFixedHeight widget = Widget $ \w () -> fmap (\(h, x) -> ((), h, x)) (widget w)
 
+-- | Convert a 'FlowWidget' to a 'FixedHeightWidget' by fixing the height to a given value
 fixh :: (Functor f) => dim -> FlowWidget dim f a -> FixedHeightWidget dim f a
 fixh h widget = mkFixedHeight $ \w -> fmap (\r -> (h,r)) ((fromFlow widget) w h)
 
+-- | Convert a 'FlowWidget' to a 'FixedWidthWidget' by fixing the width to a given value
 fixw :: (Functor f) => dim -> FlowWidget dim f a -> FixedWidthWidget dim f a
 fixw w widget = mkFixedWidth $ \h -> fmap (\r -> (w,r)) ((fromFlow widget) w h)

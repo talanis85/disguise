@@ -19,21 +19,27 @@ description:         Please see the README on Github at <https://github.com/gith
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.PUI.Gtk
-                     , Graphics.PUI.Gtk.Image
-                     , Graphics.PUI.Gtk.List
+  exposed-modules:     Graphics.PUI.Cairo
+                     , Graphics.PUI.Cairo.Widget
+                     , Graphics.PUI.Cairo.Widget.Image
+                     , Graphics.PUI.Cairo.Widget.List
+                     , Graphics.PUI.Cairo.Widget.Text
+                     , Graphics.PUI.Gtk.Event
                      , Graphics.PUI.Gtk.Main
-                     , Graphics.PUI.Gtk.Widget
+                     , Graphics.PUI.Interactive
                      , Graphics.PUI.Widget
   build-depends:       base >= 4.7 && < 5
                      , array
                      , bifunctors
                      , cairo
+                     , comonad
+                     , free
                      , gtk3
                      , JuicyPixels
                      , ListZipper
                      , mtl
                      , pango
+                     , text
                      , vector
   default-language:    Haskell2010
 
@@ -43,6 +49,7 @@ executable pui-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , JuicyPixels
+                     , mtl
                      , pui
   default-language:    Haskell2010
 

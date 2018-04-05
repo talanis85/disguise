@@ -1,7 +1,5 @@
-{-# LANGUAGE
-  FlexibleContexts
-#-}
-module Graphics.PUI.Gtk.Image
+{-# LANGUAGE FlexibleContexts #-}
+module Graphics.PUI.Cairo.Widget.Image
   ( flowImage
   , fixedImage
   , loadImage
@@ -18,7 +16,7 @@ import Data.Bits
 import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Ptr
-import Graphics.PUI.Gtk.Widget
+import Graphics.PUI.Cairo.Widget
 import Graphics.PUI.Widget
 import Graphics.Rendering.Cairo
 
