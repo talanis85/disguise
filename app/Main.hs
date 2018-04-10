@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 module Main where
 
@@ -10,13 +11,18 @@ import Graphics.PUI.Gtk.Main
 main :: IO ()
 main = do
   (Right img) <- loadImage "test.png"
-  let initModel = 0
+  let initModel = "" 
       -- updateModel c m | c == 'a'  = m + 1
       --                | otherwise = m
-      updateModel (KeyEvent key) m = putStrLn (keyName key) >> return m
+      -- updateModel (KeyEvent key) m = putStrLn (keyName key) >> return m
+      updateModel (KeyEvent key) m = return (m ++ maybe [] return (keyChar key))
+      {-
       testWidget n = return $
-                (box (alignLeft (text ("Hallo Welt " ++ show n))))
+                (box (alignLeft (textBox ("Hallo Welt " ++ show n) False 0)))
         `topOf` (alignTop (alignLeft (fixedImage img)))
+      -}
+      -- testWidget m = return $ alignTop $ scaleH $ editText m False (length m)
+      testWidget m = return $ alignTop $ fixh 100 $ box $ textBox m False (length m)
   ioMain initModel updateModel testWidget
 
 {-
