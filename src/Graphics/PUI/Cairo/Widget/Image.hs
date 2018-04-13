@@ -39,7 +39,7 @@ copyVectorToSurface vec surface = do
   return ()
 
 flowImage :: (MonadIO f) => CairoImage -> CairoWidget (V Dim) (V Dim) f
-flowImage (CairoImage surface) = mkFlow $ \w h -> do
+flowImage (CairoImage surface) = FlowWidget $ \w h -> do
   iw <- imageSurfaceGetWidth surface
   ih <- imageSurfaceGetHeight surface
   let scaleX = w / fromIntegral iw
@@ -52,7 +52,7 @@ flowImage (CairoImage surface) = mkFlow $ \w h -> do
   return drawit
 
 fixedImage :: (MonadIO f) => CairoImage -> CairoWidget (F Dim) (F Dim) f
-fixedImage (CairoImage surface) = mkFixed $ do
+fixedImage (CairoImage surface) = FixedWidget $ do
   iw <- imageSurfaceGetWidth surface
   ih <- imageSurfaceGetHeight surface
   let drawit = do

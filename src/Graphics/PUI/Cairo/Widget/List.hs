@@ -23,7 +23,7 @@ sliceZipper z n = let (l, c, r) = matchZipper z
                   in (l', c, r')
 
 list :: (MonadIO f) => Z.Zipper String -> CairoWidget (V Dim) (V Dim) (StyleT f)
-list zipper = mkFlow $ \w h -> do
+list zipper = FlowWidget $ \w h -> do
   col <- asks styleColor1
   fontdesc <- asks styleFont
   textcolor <- asks styleColor1

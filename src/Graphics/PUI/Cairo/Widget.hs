@@ -31,6 +31,7 @@ module Graphics.PUI.Cairo.Widget
 
   -- * Helpers
   , setSourceRGB'
+  , retain
   ) where
 
 import Control.Monad.Reader
@@ -60,68 +61,115 @@ retain r = save >> r >> restore
 
 -- | Convert a 'FlowWidget' to a Cairo render action
 drawFlowWidget :: (Functor f) => CairoWidget (V w) (V h) (StyleT f) -> w -> h -> Style -> f (Render ())
-drawFlowWidget widget w h style = fromFlow (hoistWidget (\x -> runReaderT x style) widget) w h
+drawFlowWidget widget w h style = case hoistWidget (\x -> runReaderT x style) widget of
+  FlowWidget widget' -> widget' w h
 
 -- | Arrange one widget on the left of another
-leftOf :: forall f h. (Monad f, VarDim h, ValueOf h ~ Dim)
-       => CairoWidget (F Dim) h f -> CairoWidget (V Dim) (V Dim) f -> CairoWidget (V Dim) h f
-leftOf a b = Widget $ \w h -> do
-  (w1, h1, r1) <- fromWidget a () h
-  r2 <- fromFlow b (w - w1) (valueOf (Proxy :: Proxy h) h h1)
-  return ((), h1, (retain r1 >> translate w1 0 >> retain r2))
+leftOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
+       => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
+leftOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
+  (w1, h1, r1) <- a
+  r2 <- b (w - w1) h1
+  return (h1, (retain r1 >> translate w1 0 >> retain r2))
+leftOf (FixedWidthWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
+  (w1, r1) <- a h
+  r2 <- b (w - w1) h
+  return (retain r1 >> translate w1 0 >> retain r2)
+leftOf (FixedWidget a) (FixedWidthWidget b) = FixedWidget $ do
+  (w1, h1, r1) <- a
+  (w2, r2) <- b h1
+  return (w1 + w2, h1, retain r1 >> translate w1 0 >> retain r2)
+leftOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
+  (w1, r1) <- a h
+  (w2, r2) <- b h
+  return (w1 + w2, retain r1 >> translate w1 0 >> retain r2)
 
 -- | Arrange one widget on top of another
-topOf :: forall f w. (Monad f, VarDim w, ValueOf w ~ Dim)
-      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) (V Dim) f -> CairoWidget w (V Dim) f
-topOf a b = Widget $ \w h -> do
-  (w1, h1, r1) <- fromWidget a w ()
-  r2 <- fromFlow b (valueOf (Proxy :: Proxy w) w w1) (h - h1)
-  return (w1, (), (retain r1 >> translate 0 h1 >> retain r2))
+topOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
+      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
+topOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
+  (w1, h1, r1) <- a
+  r2 <- b w1 (h - h1)
+  return (w1, (retain r1 >> translate 0 h1 >> retain r2))
+topOf (FixedHeightWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
+  (h1, r1) <- a w
+  r2 <- b w (h - h1)
+  return (retain r1 >> translate 0 h1 >> retain r2)
+topOf (FixedWidget a) (FixedHeightWidget b) = FixedWidget $ do
+  (w1, h1, r1) <- a
+  (h2, r2) <- b w1
+  return (w1, h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
+topOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
+  (h1, r1) <- a w
+  (h2, r2) <- b w
+  return (h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
 
 -- | Expand a widget horizontally by adding a space to the right
-alignLeft :: (Monad f, VarDim h, ValueOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
+alignLeft :: (Monad f, DimOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
 alignLeft x = x `leftOf` space
 
 -- | Expand a widget vertically by adding a space to the bottom
-alignTop :: (Monad f, VarDim w, ValueOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
+alignTop :: (Monad f, DimOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
 alignTop x = x `topOf` space
 
 -- | Expand a widget vertically by scaling along the Y axis
-stretchV :: forall f w. (Monad f) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
-stretchV widget = Widget $ \w h -> do
-  (w', h', r) <- fromWidget widget w ()
+stretchV :: (Monad f) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
+stretchV (FixedWidget widget) = FixedWidthWidget $ \h -> do
+  (w', h', r) <- widget
   let drawit = do
         scale 1.0 (h / h')
         retain r
-  return (w', (), drawit)
+  return (w', drawit)
+stretchV (FixedHeightWidget widget) = FlowWidget $ \w h -> do
+  (h', r) <- widget w
+  let drawit = do
+        scale 1.0 (h / h')
+        retain r
+  return drawit
 
 -- | Expand a widget horizontally by scaling along the X axis
-stretchH :: forall f h. (Monad f) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
-stretchH widget = Widget $ \w h -> do
-  (w', h', r) <- fromWidget widget () h
+stretchH :: (Monad f) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
+stretchH (FixedWidget widget) = FixedHeightWidget $ \w -> do
+  (w', h', r) <- widget
   let drawit = do
         scale (w / w') 1.0
         retain r
-  return ((), h', drawit)
+  return (h', drawit)
+stretchH (FixedWidthWidget widget) = FlowWidget $ \w h -> do
+  (w', r) <- widget h
+  let drawit = do
+        scale (w / w') 1.0
+        retain r
+  return drawit
 
 -- | Draw a box around a widget
-box :: forall f w h. (Monad f, VarDim w, VarDim h, ValueOf w ~ Dim, ValueOf h ~ Dim)
-    => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
-box x = Widget $ \w h -> do
-  (rw, rh, r) <- fromWidget x w h
+box :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim) => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+box (FlowWidget widget) = FlowWidget $ \w h -> do
+  r <- widget w h
   col <- asks styleColor1
-  let bw = valueOf (Proxy :: Proxy w) w rw
-      bh = valueOf (Proxy :: Proxy h) h rh
-      drawit = do
-        setSourceRGB' col
-        rectangle 0 0 bw bh
-        stroke
-        retain r
-  return (rw, rh, drawit)
+  return (drawBox col w h r)
+box (FixedWidget widget) = FixedWidget $ do
+  (w, h, r) <- widget
+  col <- asks styleColor1
+  return (w, h, drawBox col w h r)
+box (FixedWidthWidget widget) = FixedWidthWidget $ \h -> do
+  (w, r) <- widget h
+  col <- asks styleColor1
+  return (w, drawBox col w h r)
+box (FixedHeightWidget widget) = FixedHeightWidget $ \w -> do
+  (h, r) <- widget w
+  col <- asks styleColor1
+  return (h, drawBox col w h r)
+
+drawBox col w h r = do
+  setSourceRGB' col
+  rectangle 0 0 w h
+  stroke
+  retain r
 
 -- | A space of variable size
 space :: (Applicative f) => CairoWidget (V w) (V h) f
-space = mkFlow $ \w h -> pure (return ())
+space = FlowWidget $ \w h -> pure (return ())
 
 setSourceRGB' (RGB a b c) = setSourceRGB a b c
 

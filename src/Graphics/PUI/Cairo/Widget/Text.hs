@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Graphics.PUI.Cairo.Widget.Text
   ( text
   , editText
@@ -13,7 +14,7 @@ import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
 
 text :: (MonadIO f) => String -> CairoWidget (F Dim) (F Dim) (StyleT f)
-text str = mkFixed $ do
+text str = FixedWidget $ do
   fontdesc <- asks styleFont
   textcolor <- asks styleColor1
   context <- liftIO $ cairoCreateContext Nothing
@@ -26,7 +27,7 @@ text str = mkFixed $ do
   return (w, h, drawit)
 
 editText :: (MonadIO f) => String -> Bool -> Int -> Widget (F Dim) (F Dim) (StyleT f) (Render (), Dim)
-editText str editing cursor = mkFixed $ do
+editText str editing cursor = FixedWidget $ do
   fontdesc <- asks styleFont
   textcolor <- asks $ if editing then styleColor2 else styleColor1
   context <- liftIO $ cairoCreateContext Nothing
@@ -42,19 +43,21 @@ editText str editing cursor = mkFixed $ do
   return (w, h, (drawit, cursorPos))
 
 textBox :: (MonadIO f) => String -> Bool -> Int -> CairoWidget (V Dim) (V Dim) (StyleT f)
-textBox str editing cursor = mkFlow $ \w h -> do
-  (w', h', (r, cursorPos)) <- fromFixed $ editText str editing cursor
-  let drawit = do
-        let s = h / h'
-        retain $ do
-          rectangle 0 0 w h
-          clip
-          scale s s
-          if cursorPos > ((w / s) * 0.8)
-             then translate (- (cursorPos - ((w / s) * 0.8))) 0
-             else return ()
-          r
-  return drawit
+textBox str editing cursor = FlowWidget $ \w h -> do
+  case editText str editing cursor of
+    FixedWidget widget -> do
+      (w', h', (r, cursorPos)) <- widget
+      let drawit = do
+            let s = h / h'
+            retain $ do
+              rectangle 0 0 w h
+              clip
+              scale s s
+              if cursorPos > ((w / s) * 0.8)
+                 then translate (- (cursorPos - ((w / s) * 0.8))) 0
+                 else return ()
+              r
+      return drawit
 
 insertCursorMarkup 0 (x:xs) = "<u>" ++ [x] ++ "</u>" ++ xs
 insertCursorMarkup n (x:xs) = x : insertCursorMarkup (n-1) xs
