@@ -21,11 +21,12 @@ module Graphics.PUI.Cairo.Widget
 
   -- * Consumption
   , drawFlowWidget
+  , runStyleT
 
   -- * Basic layout combinators
   , leftOf, topOf
   , alignLeft, alignTop
-  , space
+  , space, spaceH, spaceV
   , stretchH, stretchV
   , box
 
@@ -55,6 +56,10 @@ data Style = Style
   }
 
 type StyleT m = ReaderT Style m
+
+runStyleT :: StyleT m a -> Style -> m a
+runStyleT = runReaderT
+
 type CairoWidget w h f = Widget w h f (Render ())
 
 retain r = save >> r >> restore
@@ -170,6 +175,12 @@ drawBox col w h r = do
 -- | A space of variable size
 space :: (Applicative f) => CairoWidget (V w) (V h) f
 space = FlowWidget $ \w h -> pure (return ())
+
+spaceH :: (Applicative f, Num h) => CairoWidget (V w) (F h) f
+spaceH = FixedHeightWidget $ \w -> pure (0, return ())
+
+spaceV :: (Applicative f, Num w) => CairoWidget (F w) (V h) f
+spaceV = FixedWidthWidget $ \h -> pure (0, return ())
 
 setSourceRGB' (RGB a b c) = setSourceRGB a b c
 
