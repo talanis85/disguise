@@ -24,7 +24,7 @@ text str = FixedWidget $ do
   let drawit = do
         setSourceRGB' textcolor
         showLayout layout
-  return (w, h, drawit)
+  return (max 0.1 w, h, drawit)
 
 editText :: (MonadIO f) => String -> Bool -> Int -> Widget (F Dim) (F Dim) (StyleT f) (Render (), Dim)
 editText str editing cursor = FixedWidget $ do

@@ -23,6 +23,7 @@ library
                      , Graphics.PUI.Cairo.Widget
                      , Graphics.PUI.Cairo.Widget.Image
                      , Graphics.PUI.Cairo.Widget.List
+                     , Graphics.PUI.Cairo.Widget.Meter
                      , Graphics.PUI.Cairo.Widget.Text
                      , Graphics.PUI.Gtk.Event
                      , Graphics.PUI.Gtk.Main

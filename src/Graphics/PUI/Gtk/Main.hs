@@ -11,6 +11,7 @@ module Graphics.PUI.Gtk.Main
   ( ioMain
   , pureMain
   , asyncMain
+  , defaultStyle
   , quit
   ) where
 
@@ -26,19 +27,23 @@ import qualified Graphics.UI.Gtk as G
 quit :: IO ()
 quit = G.mainQuit
 
+defaultStyle :: IO Style
+defaultStyle = do
+  font <- G.fontDescriptionFromString "monospace 8"
+  return Style
+    { styleFont = font
+    , styleColor0 = RGB 0 0 0
+    , styleColor1 = RGB 1 1 1
+    , styleColor2 = RGB 1 0 0
+    }
+
 -- | A main function that takes an initial model, a function to transform the model when an event arrives
 --   and a function from the model to a widget to display.
 ioMain :: model -> (Event -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
 ioMain initModel updateModel widget = do
   G.initGUI
   modelRef <- newIORef initModel
-  font <- G.fontDescriptionFromString "monospace 8"
-  let style = Style
-        { styleFont = font
-        , styleColor0 = RGB 0 0 0
-        , styleColor1 = RGB 1 1 1
-        , styleColor2 = RGB 1 0 0
-        }
+  style <- defaultStyle
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew
   G.containerAdd window drawingArea
@@ -74,13 +79,7 @@ asyncMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (Event ->
 asyncMain init = do
   G.initGUI
   widgetRef <- newIORef Nothing
-  font <- G.fontDescriptionFromString "monospace 8"
-  let style = Style
-        { styleFont = font
-        , styleColor0 = RGB 0 0 0
-        , styleColor1 = RGB 1 1 1
-        , styleColor2 = RGB 1 0 0
-        }
+  style <- defaultStyle
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew
   G.containerAdd window drawingArea
@@ -98,7 +97,7 @@ asyncMain init = do
   window `G.on` G.deleteEvent $ do
     liftIO G.mainQuit
     return False
-  handler <- init $ \widget -> do
+  handler <- init $ \widget -> G.postGUIAsync $ do
     modifyIORef widgetRef (const (Just widget))
     G.widgetQueueDraw drawingArea
   window `G.on` G.keyPressEvent $ do
