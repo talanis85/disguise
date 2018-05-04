@@ -11,6 +11,7 @@ import Graphics.PUI.Gtk.Main
 main :: IO ()
 main = do
   (Right img) <- loadImage "test.png"
+  style <- defaultStyle
   let initModel = "" 
       -- updateModel c m | c == 'a'  = m + 1
       --                | otherwise = m
@@ -23,7 +24,7 @@ main = do
       -}
       -- testWidget m = return $ alignTop $ scaleH $ editText m False (length m)
       testWidget m = return $ alignTop $ fixh 100 $ box $ textBox m False (length m)
-  ioMain initModel updateModel testWidget
+  ioMain style initModel updateModel testWidget
 
 {-
 topofI = liftA2 topof

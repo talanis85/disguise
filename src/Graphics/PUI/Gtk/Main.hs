@@ -39,11 +39,10 @@ defaultStyle = do
 
 -- | A main function that takes an initial model, a function to transform the model when an event arrives
 --   and a function from the model to a widget to display.
-ioMain :: model -> (Event -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
-ioMain initModel updateModel widget = do
+ioMain :: Style -> model -> (Event -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
+ioMain style initModel updateModel widget = do
   G.initGUI
   modelRef <- newIORef initModel
-  style <- defaultStyle
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew
   G.containerAdd window drawingArea
@@ -71,8 +70,8 @@ ioMain initModel updateModel widget = do
   G.mainGUI
 
 -- | Same as 'ioMain' but without performing IO
-pureMain :: model -> (Event -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
-pureMain initModel updateModel widget = ioMain initModel (fmap (fmap return) updateModel) (return . widget)
+pureMain :: Style -> model -> (Event -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
+pureMain style initModel updateModel widget = ioMain style initModel (fmap (fmap return) updateModel) (return . widget)
 
 -- | For use with typical FRP frameworks
 asyncMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (Event -> IO ())) -> IO ()
