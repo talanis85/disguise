@@ -24,7 +24,7 @@ module Graphics.PUI.Cairo.Widget
   , runStyleT
 
   -- * Basic layout combinators
-  , leftOf, topOf
+  , leftOf, topOf, rightOf, bottomOf
   , alignLeft, alignTop
   , space, spaceH, spaceV
   , stretchH, stretchV
@@ -108,6 +108,46 @@ topOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
   (h1, r1) <- a w
   (h2, r2) <- b w
   return (h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
+
+-- | Arrange one widget on the right of another
+rightOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
+       => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
+rightOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
+  (w1, h1, r1) <- a
+  r2 <- b (w - w1) h1
+  return (h1, (retain r2 >> translate (w - w1) 0 >> retain r1))
+rightOf (FixedWidthWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
+  (w1, r1) <- a h
+  r2 <- b (w - w1) h
+  return (retain r2 >> translate (w - w1) 0 >> retain r1)
+rightOf (FixedWidget a) (FixedWidthWidget b) = FixedWidget $ do
+  (w1, h1, r1) <- a
+  (w2, r2) <- b h1
+  return (w1 + w2, h1, retain r2 >> translate w2 0 >> retain r1)
+rightOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
+  (w1, r1) <- a h
+  (w2, r2) <- b h
+  return (w1 + w2, retain r2 >> translate w2 0 >> retain r1)
+
+-- | Arrange one widget at the bottom of another
+bottomOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
+      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
+bottomOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
+  (w1, h1, r1) <- a
+  r2 <- b w1 (h - h1)
+  return (w1, (retain r2 >> translate 0 (h - h1) >> retain r1))
+bottomOf (FixedHeightWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
+  (h1, r1) <- a w
+  r2 <- b w (h - h1)
+  return (retain r2 >> translate 0 (h - h1) >> retain r1)
+bottomOf (FixedWidget a) (FixedHeightWidget b) = FixedWidget $ do
+  (w1, h1, r1) <- a
+  (h2, r2) <- b w1
+  return (w1, h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
+bottomOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
+  (h1, r1) <- a w
+  (h2, r2) <- b w
+  return (h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
 
 -- | Expand a widget horizontally by adding a space to the right
 alignLeft :: (Monad f, DimOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
