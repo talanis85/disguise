@@ -60,9 +60,11 @@ hoistWidget f (FixedWidthWidget wid) = FixedWidthWidget $ fmap f wid
 hoistWidget f (FixedHeightWidget wid) = FixedHeightWidget $ fmap f wid
 
 -- | Convert a 'FlowWidget' to a 'FixedHeightWidget' by fixing the height to a given value
-fixh :: (Functor f) => dim -> Widget (V dim) (V dim) f a -> Widget (V dim) (F dim) f a
+fixh :: (Functor f) => dim -> Widget w (V dim) f a -> Widget w (F dim) f a
 fixh h (FlowWidget widget) = FixedHeightWidget $ \w -> fmap (\r -> (h,r)) (widget w h)
+fixh h (FixedWidthWidget widget) = FixedWidget $ fmap (\(w,r) -> (w,h,r)) (widget h)
 
 -- | Convert a 'FlowWidget' to a 'FixedWidthWidget' by fixing the width to a given value
-fixw :: (Functor f) => dim -> Widget (V dim) (V dim) f a -> Widget (F dim) (V dim) f a
+fixw :: (Functor f) => dim -> Widget (V dim) h f a -> Widget (F dim) h f a
 fixw w (FlowWidget widget) = FixedWidthWidget $ \h -> fmap (\r -> (w,r)) (widget w h)
+fixw w (FixedHeightWidget widget) = FixedWidget $ fmap (\(h,r) -> (w,h,r)) (widget w)
