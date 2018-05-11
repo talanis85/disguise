@@ -11,10 +11,13 @@ module Graphics.PUI.Gtk.Main
   ( ioMain
   , pureMain
   , asyncMain
+  , batchMain
   , defaultStyle
   , quit
   ) where
 
+import Control.Concurrent
+import Control.Concurrent.Chan
 import Control.Monad.Trans
 import Data.IORef
 import Graphics.PUI.Gtk.Event
@@ -105,4 +108,39 @@ asyncMain init = do
     return True
   G.widgetShowAll window
   G.widgetQueueDraw drawingArea
+  G.mainGUI
+
+batchMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> Chan Event -> IO ()) -> IO ()
+batchMain runner = do
+  evchan <- newChan
+  G.initGUI
+  widgetRef <- newIORef Nothing
+  style <- defaultStyle
+  drawingArea <- G.drawingAreaNew
+  window <- G.windowNew
+  G.containerAdd window drawingArea
+  drawingArea `G.on` G.draw $ do
+    widget' <- liftIO $ readIORef widgetRef
+    case widget' of
+      Nothing -> return ()
+      Just widget -> do
+        G.Rectangle x y w h <- liftIO $ G.widgetGetAllocation drawingArea
+        C.rectangle 0 0 (fromIntegral w) (fromIntegral h)
+        setSourceRGB' (styleColor0 style)
+        C.fill
+        drawit <- liftIO $ drawFlowWidget widget (fromIntegral w) (fromIntegral h) style
+        drawit
+  window `G.on` G.deleteEvent $ do
+    liftIO G.mainQuit
+    return False
+  window `G.on` G.keyPressEvent $ do
+    keyval <- G.eventKeyVal
+    liftIO $ writeChan evchan (KeyEvent keyval)
+    return True
+  G.widgetShowAll window
+  G.widgetQueueDraw drawingArea
+  let draw = \widget -> G.postGUIAsync $ do
+        modifyIORef widgetRef (const (Just widget))
+        G.widgetQueueDraw drawingArea
+  forkIO $ runner draw evchan
   G.mainGUI
