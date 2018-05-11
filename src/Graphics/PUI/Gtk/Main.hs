@@ -142,5 +142,5 @@ batchMain runner = do
   let draw = \widget -> G.postGUIAsync $ do
         modifyIORef widgetRef (const (Just widget))
         G.widgetQueueDraw drawingArea
-  forkIO $ runner draw evchan
+  forkIO $ runner draw evchan >> G.mainQuit
   G.mainGUI
