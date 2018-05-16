@@ -22,6 +22,7 @@ module Graphics.PUI.Cairo.Widget
   -- * Consumption
   , drawFlowWidget
   , runStyleT
+  , withColor0, withColor1, withColor2, withFont
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
@@ -54,6 +55,20 @@ data Style = Style
   , styleColor1 :: RGB
   , styleColor2 :: RGB
   }
+
+withColor0 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withColor0 color = hoistWidget (local (\style -> style { styleColor0 = color }))
+
+withColor1 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withColor1 color = hoistWidget (local (\style -> style { styleColor1 = color }))
+
+withColor2 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withColor2 color = hoistWidget (local (\style -> style { styleColor2 = color }))
+
+withFont :: (MonadIO f) => String -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withFont fontname = hoistWidget $ \m -> do
+  font <- liftIO $ fontDescriptionFromString fontname
+  local (\style -> style { styleFont = font }) m
 
 type StyleT m = ReaderT Style m
 
