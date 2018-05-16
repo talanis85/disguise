@@ -21,6 +21,10 @@ module Graphics.PUI.Widget
       Widget (..)
     , F, V
     , DimOf
+    , runFixedWidget
+    , runFlowWidget
+    , runFixedWidthWidget
+    , runFixedHeightWidget
       -- * Transformations between different flavours
     , fixh, fixw
       -- * Transformation of the underlying functor
@@ -51,6 +55,18 @@ type FlowWidget dim        = Widget (V dim) (V dim)
 type FixedWidget dim       = Widget (F dim) (F dim)
 type FixedWidthWidget dim  = Widget (F dim) (V dim)
 type FixedHeightWidget dim = Widget (V dim) (F dim)
+
+runFlowWidget :: FlowWidget dim f a -> dim -> dim -> f a
+runFlowWidget (FlowWidget f) w h = f w h
+
+runFixedWidget :: FixedWidget dim f a -> f (dim, dim, a)
+runFixedWidget (FixedWidget r) = r
+
+runFixedWidthWidget :: FixedWidthWidget dim f a -> dim -> f (dim, a)
+runFixedWidthWidget (FixedWidthWidget f) h = f h
+
+runFixedHeightWidget :: FixedHeightWidget dim f a -> dim -> f (dim, a)
+runFixedHeightWidget (FixedHeightWidget f) w = f w
 
 -- | See @hoist@ from the MFunctor package
 hoistWidget :: (forall a. f a -> g a) -> Widget w h f a -> Widget w h g a

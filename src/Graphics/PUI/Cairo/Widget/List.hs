@@ -1,5 +1,6 @@
 module Graphics.PUI.Cairo.Widget.List
   ( list
+  , listOf
   ) where
 
 import Control.Monad.Reader
@@ -48,3 +49,26 @@ list zipper = FlowWidget $ \w h -> do
         maybe (return ()) (drawLine True) c
         mapM_ (drawLine False) r
   return drawit
+
+listOf :: (MonadIO f) => Z.Zipper (Bool -> CairoWidget (V Dim) (F Dim) f) -> CairoWidget (V Dim) (V Dim) f
+listOf zipper = FlowWidget $ \w h -> do
+  let (l, c, r) = matchZipper zipper
+      lw = foldr topOf (fixh 0 space) (map ($ False) l)
+      rw = foldr topOf (fixh 0 space) (map ($ False) r)
+  (lheight, ldraw) <- runFixedHeightWidget lw w
+  (cheight, cdraw) <- case c of
+    Nothing -> return (0, return ())
+    Just c' -> runFixedHeightWidget (c' True) w
+  (rheight, rdraw) <- runFixedHeightWidget rw w
+  let translation | lheight + cheight + rheight <= h = 0
+                  | lheight < h / 2 = 0
+                  | otherwise = h / 2 - lheight
+  return $ do
+    rectangle 0 0 w h
+    clip
+    translate 0 translation
+    retain ldraw
+    translate 0 lheight
+    retain cdraw
+    translate 0 cheight
+    retain rdraw
