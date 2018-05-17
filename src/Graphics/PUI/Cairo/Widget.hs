@@ -26,6 +26,7 @@ module Graphics.PUI.Cairo.Widget
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
+  , tabular
   , alignLeft, alignTop
   , space, spaceH, spaceV
   , stretchH, stretchV
@@ -163,6 +164,21 @@ bottomOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w ->
   (h1, r1) <- a w
   (h2, r2) <- b w
   return (h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
+
+tabular :: (Monad f, DimOf h ~ Dim)
+        => [(Double, CairoWidget (V Dim) h f)] -> CairoWidget (V Dim) h f
+tabular [] = error "empty argument to 'tabular'"
+tabular (x:xs) = case x of
+  (_, FlowWidget _) -> tabularFlow (x:xs)
+  (_, FixedHeightWidget _) -> tabularFixedHeight (x:xs)
+  where
+    relativeWidth w (a,b) = fixw (a * w) b
+    tabularFlow ws = FlowWidget $ \w h -> do
+      let widget' = foldr leftOf space (map (relativeWidth w) ws)
+      runFlowWidget widget' w h
+    tabularFixedHeight ws = FixedHeightWidget $ \w -> do
+      let widget' = foldr leftOf (fixh 0 space) (map (relativeWidth w) ws)
+      runFixedHeightWidget widget' w
 
 -- | Expand a widget horizontally by adding a space to the right
 alignLeft :: (Monad f, DimOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
