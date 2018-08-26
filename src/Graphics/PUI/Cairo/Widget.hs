@@ -31,6 +31,7 @@ module Graphics.PUI.Cairo.Widget
   , space, spaceH, spaceV
   , stretchH, stretchV
   , box
+  , pad
 
   -- * Helpers
   , setSourceRGB'
@@ -237,6 +238,20 @@ box (FixedHeightWidget widget) = FixedHeightWidget $ \w -> do
   (h, r) <- widget w
   col <- asks styleColor1
   return (h, drawBox col w h r)
+
+pad :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim) => Dim -> CairoWidget w h f -> CairoWidget w h f
+pad px (FlowWidget widget) = FlowWidget $ \w h -> do
+  r <- widget (w - 2 * px) (h - 2 * px)
+  return (translate px px >> retain r)
+pad px (FixedWidget widget) = FixedWidget $ do
+  (w, h, r) <- widget
+  return (w + 2 * px, h + 2 * px, translate px px >> retain r)
+pad px (FixedWidthWidget widget) = FixedWidthWidget $ \h -> do
+  (w, r) <- widget (h - 2 * px)
+  return (w + 2 * px, translate px px >> retain r)
+pad px (FixedHeightWidget widget) = FixedHeightWidget $ \w -> do
+  (h, r) <- widget (w - 2 * px)
+  return (h + 2 * px, translate px px >> retain r)
 
 drawBox col w h r = do
   setSourceRGB' col
