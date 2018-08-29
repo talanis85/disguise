@@ -27,7 +27,8 @@ module Graphics.PUI.Cairo.Widget
   , withStyling
   , font, color0, color1, color2
   , loadFont
-  , reverseColors
+  , reverseColors, reverseFgBg
+  , parseRGB
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
@@ -44,6 +45,7 @@ module Graphics.PUI.Cairo.Widget
   ) where
 
 import Control.Monad.Reader
+import Data.Char (digitToInt)
 import Data.Functor.Identity
 import Data.Monoid
 import Graphics.PUI.Widget
@@ -56,6 +58,13 @@ type Dim = Double
 
 -- | Color type
 data RGB = RGB Double Double Double
+
+parseRGB :: String -> RGB
+parseRGB ('#':r1:r2:g1:g2:b1:b2:[]) =
+  RGB (hexcomp r1 r2) (hexcomp g1 g2) (hexcomp b1 b2)
+    where
+      hexcomp c1 c2 = fromIntegral (digitToInt c1 * 16 + digitToInt c2) / 255
+parseRGB _ = error "Invalid RGB string"
 
 reverseRGB :: RGB -> RGB
 reverseRGB (RGB r g b) = RGB (1 - r) (1 - g) (1 - b)
@@ -93,6 +102,12 @@ reverseColors = Endo $ \style -> style
   { styleColor0 = reverseRGB (styleColor0 style)
   , styleColor1 = reverseRGB (styleColor1 style)
   , styleColor2 = reverseRGB (styleColor2 style)
+  }
+
+reverseFgBg :: Styling
+reverseFgBg = Endo $ \style -> style
+  { styleColor0 = styleColor1 style
+  , styleColor1 = styleColor0 style
   }
 
 type StyleT m = ReaderT Style m
