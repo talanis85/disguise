@@ -22,7 +22,9 @@ module Graphics.PUI.Cairo.Widget
   -- * Consumption
   , drawFlowWidget
   , runStyleT
-  , withColor0, withColor1, withColor2, withFont
+  , withStyling
+  , font, color0, color1, color2
+  , loadFont
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
@@ -40,6 +42,7 @@ module Graphics.PUI.Cairo.Widget
 
 import Control.Monad.Reader
 import Data.Functor.Identity
+import Data.Monoid
 import Graphics.PUI.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
@@ -58,19 +61,25 @@ data Style = Style
   , styleColor2 :: RGB
   }
 
-withColor0 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
-withColor0 color = hoistWidget (local (\style -> style { styleColor0 = color }))
+type Styling = Endo Style
 
-withColor1 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
-withColor1 color = hoistWidget (local (\style -> style { styleColor1 = color }))
+withStyling :: (Monad f) => Styling -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withStyling styling = hoistWidget (local (appEndo styling))
 
-withColor2 :: (Monad f) => RGB -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
-withColor2 color = hoistWidget (local (\style -> style { styleColor2 = color }))
+loadFont :: String -> IO FontDescription
+loadFont fontname = liftIO $ fontDescriptionFromString fontname
 
-withFont :: (MonadIO f) => String -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
-withFont fontname = hoistWidget $ \m -> do
-  font <- liftIO $ fontDescriptionFromString fontname
-  local (\style -> style { styleFont = font }) m
+font :: FontDescription -> Styling
+font f = Endo $ \style -> style { styleFont = f }
+
+color0 :: RGB -> Styling
+color0 rgb = Endo $ \style -> style { styleColor0 = rgb }
+
+color1 :: RGB -> Styling
+color1 rgb = Endo $ \style -> style { styleColor1 = rgb }
+
+color2 :: RGB -> Styling
+color2 rgb = Endo $ \style -> style { styleColor2 = rgb }
 
 type StyleT m = ReaderT Style m
 
