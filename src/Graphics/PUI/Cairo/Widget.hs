@@ -22,9 +22,12 @@ module Graphics.PUI.Cairo.Widget
   -- * Consumption
   , drawFlowWidget
   , runStyleT
+
+  -- * Styling
   , withStyling
   , font, color0, color1, color2
   , loadFont
+  , reverseColors
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
@@ -53,6 +56,9 @@ type Dim = Double
 -- | Color type
 data RGB = RGB Double Double Double
 
+reverseRGB :: RGB -> RGB
+reverseRGB (RGB r g b) = RGB (1 - r) (1 - g) (1 - b)
+
 -- | Style type
 data Style = Style
   { styleFont :: FontDescription
@@ -80,6 +86,13 @@ color1 rgb = Endo $ \style -> style { styleColor1 = rgb }
 
 color2 :: RGB -> Styling
 color2 rgb = Endo $ \style -> style { styleColor2 = rgb }
+
+reverseColors :: Styling
+reverseColors = Endo $ \style -> style
+  { styleColor0 = reverseRGB (styleColor0 style)
+  , styleColor1 = reverseRGB (styleColor1 style)
+  , styleColor2 = reverseRGB (styleColor2 style)
+  }
 
 type StyleT m = ReaderT Style m
 
