@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Graphics.PUI.Cairo.Widget.Text
+module Graphics.Disguise.Cairo.Widget.Text
   ( text
   , editText
   , textBox
@@ -8,8 +8,8 @@ module Graphics.PUI.Cairo.Widget.Text
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.Trans
-import Graphics.PUI.Cairo.Widget
-import Graphics.PUI.Widget
+import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
 

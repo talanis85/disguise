@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-module Graphics.PUI.Cairo.Widget.Image
+module Graphics.Disguise.Cairo.Widget.Image
   ( flowImage
   , fixedImage
   , loadImage
@@ -16,8 +16,8 @@ import Data.Bits
 import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Ptr
-import Graphics.PUI.Cairo.Widget
-import Graphics.PUI.Widget
+import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 
 newtype CairoImage = CairoImage Surface

@@ -1,12 +1,12 @@
-module Graphics.PUI.Cairo.Widget.List
+module Graphics.Disguise.Cairo.Widget.List
   ( list
   , listOf
   ) where
 
 import Control.Monad.Reader
 import qualified Data.List.Zipper as Z
-import Graphics.PUI.Cairo.Widget
-import Graphics.PUI.Widget
+import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
 

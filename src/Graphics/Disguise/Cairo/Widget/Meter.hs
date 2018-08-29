@@ -1,10 +1,10 @@
-module Graphics.PUI.Cairo.Widget.Meter
+module Graphics.Disguise.Cairo.Widget.Meter
   ( meterH
   ) where
 
 import Control.Monad.Reader
-import Graphics.PUI.Cairo.Widget hiding (fill)
-import Graphics.PUI.Widget
+import Graphics.Disguise.Cairo.Widget hiding (fill)
+import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
 

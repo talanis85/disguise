@@ -1,4 +1,4 @@
-module Graphics.PUI.Interactive
+module Graphics.Disguise.Interactive
   ( Interactive
   , step
   , mkInteractive
@@ -10,7 +10,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Comonad
 import Control.Comonad.Cofree
-import Graphics.PUI.Widget
+import Graphics.Disguise.Widget
 
 newtype IF m e a = IF { getIF :: e -> Maybe (m a) }
 

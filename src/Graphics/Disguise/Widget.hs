@@ -8,14 +8,14 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 {- |
-Module      : Graphics.PUI.Widget
+Module      : Graphics.Disguise.Widget
 Description : Definition of a widget
 Copyright   : Philip Kranz, 2018
 License     : GPL-3
 Maintainer  : pk@pmlk.net
 Stability   : experimental
 -}
-module Graphics.PUI.Widget
+module Graphics.Disguise.Widget
     ( 
       -- * Definition of widgets
       Widget (..)

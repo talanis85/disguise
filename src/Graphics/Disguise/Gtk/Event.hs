@@ -1,12 +1,12 @@
 {- |
-Module      : Graphics.PUI.Gtk.Event
+Module      : Graphics.Disguise.Gtk.Event
 Description : Events
 Copyright   : Philip Kranz, 2018
 License     : GPL-3
 Maintainer  : pk@pmlk.net
 Stability   : experimental
 -}
-module Graphics.PUI.Gtk.Event
+module Graphics.Disguise.Gtk.Event
   ( Event (..)
   , keyName
   , keyChar

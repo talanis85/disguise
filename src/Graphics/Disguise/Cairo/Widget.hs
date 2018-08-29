@@ -5,14 +5,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 {- |
-Module      : Graphics.PUI.Cairo.Widget
+Module      : Graphics.Disguise.Cairo.Widget
 Description : Widgets to be displayed with Cairo
 Copyright   : Philip Kranz, 2018
 License     : GPL-3
 Maintainer  : pk@pmlk.net
 Stability   : experimental
 -}
-module Graphics.PUI.Cairo.Widget
+module Graphics.Disguise.Cairo.Widget
   ( 
   -- * Definition of Cairo widgets
     Dim
@@ -48,7 +48,7 @@ import Control.Monad.Reader
 import Data.Char (digitToInt)
 import Data.Functor.Identity
 import Data.Monoid
-import Graphics.PUI.Widget
+import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo hiding (fill)
 import qualified Graphics.Rendering.Cairo as Cairo
 import Graphics.Rendering.Pango

@@ -1,5 +1,5 @@
 {- |
-Module      : Graphics.PUI.Gtk.Main
+Module      : Graphics.Disguise.Gtk.Main
 Description : Various main routines for Gtk
 Copyright   : Philip Kranz, 2018
 License     : GPL-3
@@ -7,7 +7,7 @@ Maintainer  : pk@pmlk.net
 Stability   : experimental
 -}
 
-module Graphics.PUI.Gtk.Main
+module Graphics.Disguise.Gtk.Main
   ( ioMain
   , pureMain
   , asyncMain
@@ -20,9 +20,9 @@ import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Monad.Trans
 import Data.IORef
-import Graphics.PUI.Gtk.Event
-import Graphics.PUI.Cairo.Widget
-import Graphics.PUI.Widget
+import Graphics.Disguise.Gtk.Event
+import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Widget
 import qualified Graphics.Rendering.Cairo as C
 import qualified Graphics.UI.Gtk as G
 
