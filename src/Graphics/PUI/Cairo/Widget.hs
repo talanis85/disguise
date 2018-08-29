@@ -35,7 +35,7 @@ module Graphics.PUI.Cairo.Widget
   , alignLeft, alignTop
   , space, spaceH, spaceV
   , stretchH, stretchV
-  , box
+  , fill, box
   , pad
 
   -- * Helpers
@@ -47,7 +47,8 @@ import Control.Monad.Reader
 import Data.Functor.Identity
 import Data.Monoid
 import Graphics.PUI.Widget
-import Graphics.Rendering.Cairo
+import Graphics.Rendering.Cairo hiding (fill)
+import qualified Graphics.Rendering.Cairo as Cairo
 import Graphics.Rendering.Pango
 
 -- | Cairo uses 'Double' for coordinates
@@ -242,6 +243,25 @@ stretchH (FixedWidthWidget widget) = FlowWidget $ \w h -> do
         retain r
   return drawit
 
+-- | Fill a widget's background
+fill :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim) => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+fill (FlowWidget widget) = FlowWidget $ \w h -> do
+  r <- widget w h
+  col <- asks styleColor0
+  return (drawFill col w h r)
+fill (FixedWidget widget) = FixedWidget $ do
+  (w, h, r) <- widget
+  col <- asks styleColor0
+  return (w, h, drawFill col w h r)
+fill (FixedWidthWidget widget) = FixedWidthWidget $ \h -> do
+  (w, r) <- widget h
+  col <- asks styleColor0
+  return (w, drawFill col w h r)
+fill (FixedHeightWidget widget) = FixedHeightWidget $ \w -> do
+  (h, r) <- widget w
+  col <- asks styleColor0
+  return (h, drawFill col w h r)
+
 -- | Draw a box around a widget
 box :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim) => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
 box (FlowWidget widget) = FlowWidget $ \w h -> do
@@ -279,6 +299,12 @@ drawBox col w h r = do
   setSourceRGB' col
   rectangle 0 0 w h
   stroke
+  retain r
+
+drawFill col w h r = do
+  setSourceRGB' col
+  rectangle 0 0 w h
+  Cairo.fill
   retain r
 
 -- | A space of variable size
