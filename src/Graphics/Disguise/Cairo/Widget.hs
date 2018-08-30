@@ -32,7 +32,7 @@ module Graphics.Disguise.Cairo.Widget
 
   -- * Basic layout combinators
   , leftOf, topOf, rightOf, bottomOf
-  , tabular
+  , tabularH, tabularV
   , alignLeft, alignTop
   , space, spaceH, spaceV
   , stretchH, stretchV
@@ -126,23 +126,23 @@ drawFlowWidget widget w h style = case hoistWidget (\x -> runReaderT x style) wi
 
 -- | Arrange one widget on the left of another
 leftOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
-       => CairoWidget (F Dim) h f -> CairoWidget w h f -> CairoWidget w h f
+       => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
+leftOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
+  (w1, h1, r1) <- a
+  r2 <- b (w - w1) h1
+  return (h1, (retain r1 >> translate w1 0 >> retain r2))
 leftOf (FixedWidthWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
   (w1, r1) <- a h
   r2 <- b (w - w1) h
   return (retain r1 >> translate w1 0 >> retain r2)
+leftOf (FixedWidget a) (FixedWidthWidget b) = FixedWidget $ do
+  (w1, h1, r1) <- a
+  (w2, r2) <- b h1
+  return (w1 + w2, h1, retain r1 >> translate w1 0 >> retain r2)
 leftOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
   (w1, r1) <- a h
   (w2, r2) <- b h
   return (w1 + w2, retain r1 >> translate w1 0 >> retain r2)
-leftOf (FixedWidget a) (FixedWidget b) = FixedWidget $ do
-  (w1, h1, r1) <- a
-  (w2, h2, r2) <- b
-  return (w1 + w2, max h1 h2, retain r1 >> translate w1 0 >> retain r2)
-leftOf (FixedWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
-  (w1, h1, r1) <- a
-  (h2, r2) <- b (w - w1)
-  return (max h1 h2, retain r1 >> translate w1 0 >> retain r2)
 
 -- | Arrange one widget on top of another
 topOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
@@ -204,25 +204,31 @@ bottomOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w ->
   (h2, r2) <- b w
   return (h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
 
-tabular :: (Monad f, DimOf h ~ Dim)
-        => [(Double, CairoWidget (V Dim) h f)] -> CairoWidget (V Dim) h f
-tabular [] = error "empty argument to 'tabular'"
-tabular (x:xs) = case x of
+tabularH :: (Monad f)
+         => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
+tabularH [] = error "empty argument to 'tabularH'"
+tabularH (x:xs) = case x of
   (_, FlowWidget _) -> tabularFlow (x:xs)
-  (_, FixedHeightWidget _) -> tabularFixedHeight (x:xs)
   where
     relativeWidth w (a,b) = fixw (a * w) b
     tabularFlow ws = FlowWidget $ \w h -> do
       let widget' = foldr leftOf space (map (relativeWidth w) ws)
       runFlowWidget widget' w h
-    tabularFixedHeight ws = FixedHeightWidget $ \w -> do
-      let widget' = foldr leftOf (fixh 0 space) (map (relativeWidth w) ws)
-      runFixedHeightWidget widget' w
+
+tabularV :: (Monad f)
+         => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
+tabularV [] = error "empty argument to 'tabularV'"
+tabularV (x:xs) = case x of
+  (_, FlowWidget _) -> tabularFlow (x:xs)
+  where
+    relativeHeight h (a,b) = fixh (a * h) b
+    tabularFlow ws = FlowWidget $ \w h -> do
+      let widget' = foldr topOf space (map (relativeHeight h) ws)
+      runFlowWidget widget' w h
 
 -- | Expand a widget horizontally by adding a space to the right
 alignLeft :: (Monad f, DimOf h ~ Dim) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
-alignLeft x@(FixedWidget _) = x `leftOf` (fixh 0 space)
-alignLeft x@(FixedWidthWidget _) = x `leftOf` space
+alignLeft x = x `leftOf` space
 
 -- | Expand a widget vertically by adding a space to the bottom
 alignTop :: (Monad f, DimOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
