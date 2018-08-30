@@ -38,6 +38,7 @@ module Graphics.Disguise.Cairo.Widget
   , stretchH, stretchV
   , fill, box
   , pad
+  , clipH, clipV, clip
 
   -- * Helpers
   , setSourceRGB'
@@ -49,7 +50,7 @@ import Data.Char (digitToInt)
 import Data.Functor.Identity
 import Data.Monoid
 import Graphics.Disguise.Widget
-import Graphics.Rendering.Cairo hiding (fill)
+import Graphics.Rendering.Cairo hiding (clip, fill)
 import qualified Graphics.Rendering.Cairo as Cairo
 import Graphics.Rendering.Pango
 
@@ -210,7 +211,7 @@ tabularH [] = error "empty argument to 'tabularH'"
 tabularH (x:xs) = case x of
   (_, FlowWidget _) -> tabularFlow (x:xs)
   where
-    relativeWidth w (a,b) = fixw (a * w) b
+    relativeWidth w (a,b) = clipH (a * w) b
     tabularFlow ws = FlowWidget $ \w h -> do
       let widget' = foldr leftOf space (map (relativeWidth w) ws)
       runFlowWidget widget' w h
@@ -221,7 +222,7 @@ tabularV [] = error "empty argument to 'tabularV'"
 tabularV (x:xs) = case x of
   (_, FlowWidget _) -> tabularFlow (x:xs)
   where
-    relativeHeight h (a,b) = fixh (a * h) b
+    relativeHeight h (a,b) = clipV (a * h) b
     tabularFlow ws = FlowWidget $ \w h -> do
       let widget' = foldr topOf space (map (relativeHeight h) ws)
       runFlowWidget widget' w h
@@ -315,6 +316,28 @@ pad px (FixedWidthWidget widget) = FixedWidthWidget $ \h -> do
 pad px (FixedHeightWidget widget) = FixedHeightWidget $ \w -> do
   (h, r) <- widget (w - 2 * px)
   return (h + 2 * px, translate px px >> retain r)
+
+-- | Fix the width of a widget
+clipH :: (Monad f, DimOf h ~ Dim) => Dim -> CairoWidget (V Dim) h f -> CairoWidget (F Dim) h f
+clipH w (FlowWidget widget) = FixedWidthWidget $ \h -> do
+  r <- widget w h
+  return (w, retain (rectangle 0 0 w h >> Cairo.clip >> r))
+clipH w (FixedHeightWidget widget) = FixedWidget $ do
+  (h, r) <- widget w
+  return (w, h, retain (rectangle 0 0 w h >> Cairo.clip >> r))
+
+-- | Fix the height of a widget
+clipV :: (Monad f, DimOf w ~ Dim) => Dim -> CairoWidget w (V Dim) f -> CairoWidget w (F Dim) f
+clipV h (FlowWidget widget) = FixedHeightWidget $ \w -> do
+  r <- widget w h
+  return (h, retain (rectangle 0 0 w h >> Cairo.clip >> r))
+clipV h (FixedWidthWidget widget) = FixedWidget $ do
+  (w, r) <- widget h
+  return (w, h, retain (rectangle 0 0 w h >> Cairo.clip >> r))
+
+-- | Fix width and height
+clip :: (Monad f) => Dim -> Dim -> CairoWidget (V Dim) (V Dim) f -> CairoWidget (F Dim) (F Dim) f
+clip w h = clipV h . clipH w
 
 drawBox col w h r = do
   setSourceRGB' col

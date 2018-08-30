@@ -5,7 +5,7 @@ module Graphics.Disguise.Cairo.Widget.List
 
 import Control.Monad.Reader
 import qualified Data.List.Zipper as Z
-import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Cairo.Widget hiding (clip)
 import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango
