@@ -17,13 +17,14 @@ module Graphics.Disguise.Cairo.Widget
   -- * Definition of Cairo widgets
     Dim
   , CairoWidget
-  , StyleT, Style (..), RGB (..)
 
   -- * Consumption
   , drawFlowWidget
-  , runStyleT
 
   -- * Styling
+  , StyleT, Style (..), RGB (..)
+  , runStyleT
+  , Styling
   , withStyling
   , font, color0, color1, color2
   , loadFont
@@ -78,6 +79,11 @@ data Style = Style
   , styleColor2 :: RGB
   }
 
+-- | Style modifiers
+--
+-- For example, to draw text with a custom color and font:
+--
+-- > withStyling (color1 customColor <> font customFont) (text "Hello World")
 type Styling = Endo Style
 
 withStyling :: (Monad f) => Styling -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
@@ -118,7 +124,7 @@ runStyleT = runReaderT
 
 type CairoWidget w h f = Widget w h f (Render ())
 
-retain r = save >> r >> restore
+retain r = save *> r <* restore
 
 -- | Convert a 'FlowWidget' to a Cairo render action
 drawFlowWidget :: (Functor f) => CairoWidget (V w) (V h) (StyleT f) -> w -> h -> Style -> f (Render ())
@@ -126,6 +132,13 @@ drawFlowWidget widget w h style = case hoistWidget (\x -> runReaderT x style) wi
   FlowWidget widget' -> widget' w h
 
 -- | Arrange one widget on the left of another
+--
+-- @
+--   leftOf :: FixedWidget      -> FlowWidget       -> FixedHeightWidget
+--   leftOf :: FixedWidthWidget -> FlowWidget       -> FlowWidget
+--   leftOf :: FixedWidget      -> FixedWidthWidget -> FixedWidget
+--   leftOf :: FixedWidthWidget -> FixedWidthWidget -> FixedWidthWidget
+-- @
 leftOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
        => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
 leftOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
@@ -146,6 +159,13 @@ leftOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
   return (w1 + w2, retain r1 >> translate w1 0 >> retain r2)
 
 -- | Arrange one widget on top of another
+--
+-- @
+--   topOf :: FixedWidget       -> FlowWidget        -> FixedWidthWidget
+--   topOf :: FixedHeightWidget -> FlowWidget        -> FlowWidget
+--   topOf :: FixedWidget       -> FixedHeightWidget -> FixedWidget
+--   topOf :: FixedHeightWidget -> FixedHeightWidget -> FixedHeightWidget
+-- @
 topOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
       => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
 topOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
@@ -166,6 +186,13 @@ topOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
   return (h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
 
 -- | Arrange one widget on the right of another
+--
+-- @
+--   rightOf :: FixedWidget       -> FlowWidget        -> FixedHeightWidget
+--   rightOf :: FixedWidthWidget  -> FlowWidget        -> FlowWidget
+--   rightOf :: FixedWidget       -> FixedWidthWidget  -> FixedWidget
+--   rightOf :: FixedWidthtWidget -> FixedWidthWidget  -> FixedWidthWidget
+-- @
 rightOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
        => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
 rightOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
@@ -186,6 +213,13 @@ rightOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
   return (w1 + w2, retain r2 >> translate w2 0 >> retain r1)
 
 -- | Arrange one widget at the bottom of another
+--
+-- @
+--   bottomOf :: FixedWidget       -> FlowWidget        -> FixedWidthWidget
+--   bottomOf :: FixedHeightWidget -> FlowWidget        -> FlowWidget
+--   bottomOf :: FixedWidget       -> FixedHeightWidget -> FixedWidget
+--   bottomOf :: FixedHeightWidget -> FixedHeightWidget -> FixedHeightWidget
+-- @
 bottomOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
       => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
 bottomOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
