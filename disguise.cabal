@@ -17,6 +17,7 @@ description:         Please see the README on Github at <https://github.com/tala
 library
   hs-source-dirs:      src
   exposed-modules:     Graphics.Disguise.Cairo
+                     , Graphics.Disguise.Cairo.PDF
                      , Graphics.Disguise.Cairo.Widget
                      , Graphics.Disguise.Cairo.Widget.Image
                      , Graphics.Disguise.Cairo.Widget.List
