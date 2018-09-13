@@ -267,26 +267,34 @@ topOf (FlowWidget a) (FixedHeightWidget b) = FlowWidget $ \w h -> do
   return (retain (clip' w (max 0 (h - h2)) r1) >> translate 0 (max 0 (h - h2)) >> retain r2)
 
 tabularH :: (MonadFix f)
-         => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
+         => [(Double, CairoWidget (V Dim) (h Dim) f)] -> CairoWidget (V Dim) (h Dim) f
 tabularH [] = error "empty argument to 'tabularH'"
 tabularH (x:xs) = case x of
   (_, FlowWidget _) -> tabularFlow (x:xs)
+  (_, FixedHeightWidget _) -> tabularFixedHeight (x:xs)
   where
     relativeWidth w (a,b) = clipH (a * w) b
     tabularFlow ws = FlowWidget $ \w h -> do
       let widget' = foldr leftOf space (map (relativeWidth w) ws)
       runFlowWidget widget' w h
+    tabularFixedHeight ws = FixedHeightWidget $ \w -> do
+      let widget' = foldr leftOf spaceH (map (relativeWidth w) ws)
+      runFixedHeightWidget widget' w
 
 tabularV :: (MonadFix f)
-         => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
+         => [(Double, CairoWidget (w Dim) (V Dim) f)] -> CairoWidget (w Dim) (V Dim) f
 tabularV [] = error "empty argument to 'tabularV'"
 tabularV (x:xs) = case x of
   (_, FlowWidget _) -> tabularFlow (x:xs)
+  (_, FixedWidthWidget _) -> tabularFixedWidth (x:xs)
   where
     relativeHeight h (a,b) = clipV (a * h) b
     tabularFlow ws = FlowWidget $ \w h -> do
       let widget' = foldr topOf space (map (relativeHeight h) ws)
       runFlowWidget widget' w h
+    tabularFixedWidth ws = FixedWidthWidget $ \h -> do
+      let widget' = foldr topOf spaceV (map (relativeHeight h) ws)
+      runFixedWidthWidget widget' h
 
 -- | Expand a widget horizontally by adding a space to the right
 alignLeft :: (MonadFix f) => CairoWidget (F Dim) (h Dim) f -> CairoWidget (V Dim) ((h :|- V) Dim) f
