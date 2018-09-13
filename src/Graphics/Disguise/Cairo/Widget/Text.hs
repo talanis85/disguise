@@ -8,7 +8,7 @@ module Graphics.Disguise.Cairo.Widget.Text
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.Trans
-import Graphics.Disguise.Cairo.Widget hiding (clip)
+import Graphics.Disguise.Cairo.Widget hiding (clip, scale)
 import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 import Graphics.Rendering.Pango

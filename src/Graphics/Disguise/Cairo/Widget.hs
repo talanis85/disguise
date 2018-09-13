@@ -35,10 +35,11 @@ module Graphics.Disguise.Cairo.Widget
 
   -- * Basic layout combinators
   , leftOf, topOf
-  , tabularH, tabularV
+  , tabularH, tabularV, tabularH', tabularV'
   , alignLeft, alignTop
   , space, spaceH, spaceV
   , stretchH, stretchV
+  , scaleH, scaleV, scale
   , fill, box
   , pad
   , clipH, clipV, clip
@@ -53,7 +54,7 @@ import Data.Char (digitToInt)
 import Data.Functor.Identity
 import Data.Monoid
 import Graphics.Disguise.Widget
-import Graphics.Rendering.Cairo hiding (clip, fill)
+import Graphics.Rendering.Cairo hiding (clip, fill, scale)
 import qualified Graphics.Rendering.Cairo as Cairo
 import Graphics.Rendering.Pango
 
@@ -281,6 +282,11 @@ tabularH (x:xs) = case x of
       let widget' = foldr leftOf spaceH (map (relativeWidth w) ws)
       runFixedHeightWidget widget' w
 
+tabularH' :: (MonadFix f)
+          => [CairoWidget (V Dim) (h Dim) f] -> CairoWidget (V Dim) (h Dim) f
+tabularH' [] = error "empty argument to 'tabularH'"
+tabularH' xs = tabularH $ map (\w -> (1.0 / fromIntegral (length xs), w)) xs
+
 tabularV :: (MonadFix f)
          => [(Double, CairoWidget (w Dim) (V Dim) f)] -> CairoWidget (w Dim) (V Dim) f
 tabularV [] = error "empty argument to 'tabularV'"
@@ -296,6 +302,11 @@ tabularV (x:xs) = case x of
       let widget' = foldr topOf spaceV (map (relativeHeight h) ws)
       runFixedWidthWidget widget' h
 
+tabularV' :: (MonadFix f)
+          => [CairoWidget (w Dim) (V Dim) f] -> CairoWidget (w Dim) (V Dim) f
+tabularV' [] = error "empty argument to 'tabularV'"
+tabularV' xs = tabularV $ map (\w -> (1.0 / fromIntegral (length xs), w)) xs
+
 -- | Expand a widget horizontally by adding a space to the right
 alignLeft :: (MonadFix f) => CairoWidget (F Dim) (h Dim) f -> CairoWidget (V Dim) ((h :|- V) Dim) f
 alignLeft x = x `leftOf` space
@@ -309,13 +320,13 @@ stretchV :: (Monad f) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
 stretchV (FixedWidget widget) = FixedWidthWidget $ \h -> do
   (w', h', r) <- widget
   let drawit = do
-        scale 1.0 (h / h')
+        Cairo.scale 1.0 (h / h')
         retain r
   return (w', drawit)
 stretchV (FixedHeightWidget widget) = FlowWidget $ \w h -> do
   (h', r) <- widget w
   let drawit = do
-        scale 1.0 (h / h')
+        Cairo.scale 1.0 (h / h')
         retain r
   return drawit
 
@@ -324,15 +335,38 @@ stretchH :: (Monad f) => CairoWidget (F Dim) h f -> CairoWidget (V Dim) h f
 stretchH (FixedWidget widget) = FixedHeightWidget $ \w -> do
   (w', h', r) <- widget
   let drawit = do
-        scale (w / w') 1.0
+        Cairo.scale (w / w') 1.0
         retain r
   return (h', drawit)
 stretchH (FixedWidthWidget widget) = FlowWidget $ \w h -> do
   (w', r) <- widget h
   let drawit = do
-        scale (w / w') 1.0
+        Cairo.scale (w / w') 1.0
         retain r
   return drawit
+
+-- | Scale a fixed widget horizontally, keeping the aspect ratio
+scaleH :: (Monad f) => CairoWidget (F Dim) (F Dim) f -> CairoWidget (V Dim) (F Dim) f
+scaleH (FixedWidget widget) = FixedHeightWidget $ \w -> do
+  (w', h', r) <- widget
+  let scaling = w / w'
+  return (h' * scaling, Cairo.scale scaling scaling >> retain r)
+
+-- | Scale a fixed widget vertically, keeping the aspect ratio
+scaleV :: (Monad f) => CairoWidget (F Dim) (F Dim) f -> CairoWidget (F Dim) (V Dim) f
+scaleV (FixedWidget widget) = FixedWidthWidget $ \h -> do
+  (w', h', r) <- widget
+  let scaling = h / h'
+  return (w' * scaling, Cairo.scale scaling scaling >> retain r)
+
+-- | Scale a fixed widget, keeping the aspect ratio
+scale :: (Monad f) => CairoWidget (F Dim) (F Dim) f -> CairoWidget (V Dim) (V Dim) f
+scale (FixedWidget widget) = FlowWidget $ \w h -> do
+  (w', h', r) <- widget
+  let scalew = w / w'
+      scaleh = h / h'
+      scaling = min scalew scaleh
+  return (Cairo.scale scaling scaling >> retain r)
 
 -- | Fill a widget's background
 fill :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim) => CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)

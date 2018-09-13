@@ -16,7 +16,7 @@ import Data.Bits
 import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Ptr
-import Graphics.Disguise.Cairo.Widget
+import Graphics.Disguise.Cairo.Widget hiding (scale)
 import Graphics.Disguise.Widget
 import Graphics.Rendering.Cairo
 
