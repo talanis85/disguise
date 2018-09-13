@@ -34,7 +34,7 @@ module Graphics.Disguise.Cairo.Widget
   , parseRGB
 
   -- * Basic layout combinators
-  , leftOf, topOf, rightOf, bottomOf
+  , leftOf, topOf
   , tabularH, tabularV
   , alignLeft, alignTop
   , space, spaceH, spaceV
@@ -133,6 +133,9 @@ drawFlowWidget :: (Functor f) => CairoWidget (V w) (V h) (StyleT f) -> w -> h ->
 drawFlowWidget widget w h style = case hoistWidget (\x -> runReaderT x style) widget of
   FlowWidget widget' -> widget' w h
 
+clip' :: Dim -> Dim -> Render () -> Render ()
+clip' w h r = retain $ rectangle 0 0 w h >> Cairo.clip >> r
+
 -- | Horizontal composition of widths
 type family (:|) (w1 :: * -> *) (w2 :: * -> *) :: * -> * where
   F :| V = V
@@ -145,9 +148,6 @@ type family (:|-) (h1 :: * -> *) (h2 :: * -> *) :: * -> * where
   F :|- V = F
   V :|- F = F
   V :|- V = V
-
-clip' :: Dim -> Dim -> Render () -> Render ()
-clip' w h r = retain $ rectangle 0 0 w h >> Cairo.clip >> r
 
 -- | Arrange two widgets horizontally
 leftOf :: (MonadFix f)
@@ -199,86 +199,72 @@ leftOf (FlowWidget a) (FixedWidthWidget b) = FlowWidget $ \w h -> do
   r1 <- a (max 0 (w - w2)) h
   return (clip' w h (retain r1 >> translate (max 0 (w - w2)) 0 >> retain r2))
 
--- | Arrange one widget on top of another
---
--- @
---   topOf :: FixedWidget       -> FlowWidget        -> FixedWidthWidget
---   topOf :: FixedHeightWidget -> FlowWidget        -> FlowWidget
---   topOf :: FixedWidget       -> FixedHeightWidget -> FixedWidget
---   topOf :: FixedHeightWidget -> FixedHeightWidget -> FixedHeightWidget
--- @
-topOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
-      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
-topOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
+-- | Vertical composition of widths
+type family (:-) (w1 :: * -> *) (w2 :: * -> *) :: * -> * where
+  F :- F = F
+  F :- V = F
+  V :- F = F
+  V :- V = V
+
+-- | Vertical composition of heights
+type family (:-|) (h1 :: * -> *) (h2 :: * -> *) :: * -> * where
+  F :-| V = V
+  F :-| F = F
+  V :-| F = V
+
+-- | Arrange two widgets vertically
+topOf :: (MonadFix f)
+      => CairoWidget (w1 Dim) (h1 Dim) f
+      -> CairoWidget (w2 Dim) (h2 Dim) f
+      -> CairoWidget ((w1 :- w2) Dim) ((h1 :-| h2) Dim) f
+topOf (FixedWidget a) (FixedWidget b) = FixedWidget $ do
   (w1, h1, r1) <- a
-  r2 <- b w1 (h - h1)
-  return (w1, (retain r1 >> translate 0 h1 >> retain r2))
-topOf (FixedHeightWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
-  (h1, r1) <- a w
-  r2 <- b w (h - h1)
-  return (retain r1 >> translate 0 h1 >> retain r2)
+  (w2, h2, r2) <- b
+  return (w1 + w2, h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
+topOf (FixedWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
+  (w1, h1, r1) <- a
+  (w2, r2) <- b (max 0 (h - h1))
+  return (max w1 w2, retain r1 >> translate 0 h1 >> retain (clip' w2 (max 0 (h - h1)) r2))
 topOf (FixedWidget a) (FixedHeightWidget b) = FixedWidget $ do
   (w1, h1, r1) <- a
   (h2, r2) <- b w1
   return (w1, h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
+topOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
+  (w1, h1, r1) <- a
+  r2 <- b w1 (max 0 (h - h1))
+  return (w1, retain r1 >> translate 0 h1 >> retain (clip' w1 (max 0 (h - h1)) r2))
+topOf (FixedWidthWidget a) (FixedWidget b) = FixedWidthWidget $ \h -> do
+  (w2, h2, r2) <- b
+  (w1, r1) <- a (max 0 (h - h2))
+  return (max w1 w2, retain (clip' w1 (max 0 (h - h2)) r1) >> translate 0 (max 0 (h - h2)) >> retain r2)
+topOf (FixedWidthWidget a) (FixedHeightWidget b) = FixedWidthWidget $ \h -> mdo
+  (h2, r2) <- b w1
+  (w1, r1) <- a (max 0 (h - h2))
+  return (w1, retain (clip' w1 (max 0 (h - h2)) r1) >> translate 0 (max 0 (h - h2)) >> retain r2)
+topOf (FixedHeightWidget a) (FixedWidget b) = FixedWidget $ do
+  (w2, h2, r2) <- b
+  (h1, r1) <- a w2
+  return (w2, h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
+topOf (FixedHeightWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> mdo
+  (h1, r1) <- a w2
+  (w2, r2) <- b (max 0 (h - h1))
+  return (w2, retain r1 >> translate 0 h1 >> retain (clip' w2 (max 0 (h - h1)) r2))
 topOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
   (h1, r1) <- a w
   (h2, r2) <- b w
   return (h1 + h2, retain r1 >> translate 0 h1 >> retain r2)
-
--- | Arrange one widget on the right of another
---
--- @
---   rightOf :: FixedWidget       -> FlowWidget        -> FixedHeightWidget
---   rightOf :: FixedWidthWidget  -> FlowWidget        -> FlowWidget
---   rightOf :: FixedWidget       -> FixedWidthWidget  -> FixedWidget
---   rightOf :: FixedWidthtWidget -> FixedWidthWidget  -> FixedWidthWidget
--- @
-rightOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
-       => CairoWidget (F Dim) h f -> CairoWidget w (V Dim) f -> CairoWidget w h f
-rightOf (FixedWidget a) (FlowWidget b) = FixedHeightWidget $ \w -> do
-  (w1, h1, r1) <- a
-  r2 <- b (w - w1) h1
-  return (h1, (retain r2 >> translate (w - w1) 0 >> retain r1))
-rightOf (FixedWidthWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
-  (w1, r1) <- a h
-  r2 <- b (w - w1) h
-  return (retain r2 >> translate (w - w1) 0 >> retain r1)
-rightOf (FixedWidget a) (FixedWidthWidget b) = FixedWidget $ do
-  (w1, h1, r1) <- a
-  (w2, r2) <- b h1
-  return (w1 + w2, h1, retain r2 >> translate w2 0 >> retain r1)
-rightOf (FixedWidthWidget a) (FixedWidthWidget b) = FixedWidthWidget $ \h -> do
-  (w1, r1) <- a h
-  (w2, r2) <- b h
-  return (w1 + w2, retain r2 >> translate w2 0 >> retain r1)
-
--- | Arrange one widget at the bottom of another
---
--- @
---   bottomOf :: FixedWidget       -> FlowWidget        -> FixedWidthWidget
---   bottomOf :: FixedHeightWidget -> FlowWidget        -> FlowWidget
---   bottomOf :: FixedWidget       -> FixedHeightWidget -> FixedWidget
---   bottomOf :: FixedHeightWidget -> FixedHeightWidget -> FixedHeightWidget
--- @
-bottomOf :: (Monad f, DimOf w ~ Dim, DimOf h ~ Dim)
-      => CairoWidget w (F Dim) f -> CairoWidget (V Dim) h f -> CairoWidget w h f
-bottomOf (FixedWidget a) (FlowWidget b) = FixedWidthWidget $ \h -> do
-  (w1, h1, r1) <- a
-  r2 <- b w1 (h - h1)
-  return (w1, (retain r2 >> translate 0 (h - h1) >> retain r1))
-bottomOf (FixedHeightWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
+topOf (FixedHeightWidget a) (FlowWidget b) = FlowWidget $ \w h -> do
   (h1, r1) <- a w
-  r2 <- b w (h - h1)
-  return (retain r2 >> translate 0 (h - h1) >> retain r1)
-bottomOf (FixedWidget a) (FixedHeightWidget b) = FixedWidget $ do
-  (w1, h1, r1) <- a
-  (h2, r2) <- b w1
-  return (w1, h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
-bottomOf (FixedHeightWidget a) (FixedHeightWidget b) = FixedHeightWidget $ \w -> do
-  (h1, r1) <- a w
+  r2 <- b w (max 0 (h - h1))
+  return (retain r1 >> translate 0 h1 >> retain (clip' w (max 0 (h - h1)) r2))
+topOf (FlowWidget a) (FixedWidget b) = FixedWidthWidget $ \h -> do
+  (w2, h2, r2) <- b
+  r1 <- a w2 (max 0 (h - h2))
+  return (w2, retain (clip' w2 (max 0 (h - h2)) r1) >> translate 0 (max 0 (h - h2)) >> retain r2)
+topOf (FlowWidget a) (FixedHeightWidget b) = FlowWidget $ \w h -> do
   (h2, r2) <- b w
-  return (h1 + h2, retain r2 >> translate 0 h2 >> retain r1)
+  r1 <- a w (max 0 (h - h2))
+  return (retain (clip' w (max 0 (h - h2)) r1) >> translate 0 (max 0 (h - h2)) >> retain r2)
 
 tabularH :: (MonadFix f)
          => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
@@ -291,7 +277,7 @@ tabularH (x:xs) = case x of
       let widget' = foldr leftOf space (map (relativeWidth w) ws)
       runFlowWidget widget' w h
 
-tabularV :: (Monad f)
+tabularV :: (MonadFix f)
          => [(Double, CairoWidget (V Dim) (V Dim) f)] -> CairoWidget (V Dim) (V Dim) f
 tabularV [] = error "empty argument to 'tabularV'"
 tabularV (x:xs) = case x of
@@ -307,7 +293,7 @@ alignLeft :: (MonadFix f) => CairoWidget (F Dim) (h Dim) f -> CairoWidget (V Dim
 alignLeft x = x `leftOf` space
 
 -- | Expand a widget vertically by adding a space to the bottom
-alignTop :: (Monad f, DimOf w ~ Dim) => CairoWidget w (F Dim) f -> CairoWidget w (V Dim) f
+alignTop :: (MonadFix f) => CairoWidget (w Dim) (F Dim) f -> CairoWidget ((w :- V) Dim) (V Dim) f
 alignTop x = x `topOf` space
 
 -- | Expand a widget vertically by scaling along the Y axis

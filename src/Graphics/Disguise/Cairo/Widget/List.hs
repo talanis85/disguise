@@ -50,7 +50,8 @@ list zipper = FlowWidget $ \w h -> do
         mapM_ (drawLine False) r
   return drawit
 
-listOf :: (MonadIO f) => Z.Zipper (Bool -> CairoWidget (V Dim) (F Dim) f) -> CairoWidget (V Dim) (V Dim) f
+listOf :: (MonadIO f, MonadFix f)
+       => Z.Zipper (Bool -> CairoWidget (V Dim) (F Dim) f) -> CairoWidget (V Dim) (V Dim) f
 listOf zipper = FlowWidget $ \w h -> do
   let (l, c, r) = matchZipper zipper
       lw = foldr topOf (fixh 0 space) (map ($ False) l)
