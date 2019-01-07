@@ -8,10 +8,14 @@ Stability   : experimental
 -}
 
 module Graphics.Disguise.Gtk.Main
-  ( ioMain
+  ( Controller (..)
+  , runController
+
+  , ioMain
   , pureMain
   , asyncMain
   , batchMain
+
   , defaultStyle
   , quit
   ) where
@@ -19,6 +23,7 @@ module Graphics.Disguise.Gtk.Main
 import Control.Concurrent
 import Control.Concurrent.Chan
 import Control.Monad.Trans
+import Data.Functor.Contravariant
 import Data.IORef
 import Graphics.Disguise.Gtk.Event
 import Graphics.Disguise.Cairo.Widget
@@ -40,48 +45,30 @@ defaultStyle = do
     , styleColor2 = RGB 1 0 0
     }
 
--- | A main function that takes an initial model, a function to transform the model when an event arrives
---   and a function from the model to a widget to display.
-ioMain :: Style -> model -> (Event -> model -> IO model) -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO))) -> IO ()
-ioMain style initModel updateModel widget = do
-  G.initGUI
-  modelRef <- newIORef initModel
-  drawingArea <- G.drawingAreaNew
-  window <- G.windowNew
-  G.containerAdd window drawingArea
-  drawingArea `G.on` G.draw $ do
-    G.Rectangle x y w h <- liftIO $ G.widgetGetAllocation drawingArea
-    C.rectangle 0 0 (fromIntegral w) (fromIntegral h)
-    setSourceRGB' (styleColor0 style)
-    C.fill
-    model <- liftIO $ readIORef modelRef
-    widget' <- liftIO $ widget model
-    drawit <- liftIO $ drawFlowWidget widget' (fromIntegral w) (fromIntegral h) style
-    drawit
-  window `G.on` G.deleteEvent $ do
-    liftIO G.mainQuit
-    return False
-  window `G.on` G.keyPressEvent $ do
-    keyval <- G.eventKeyVal
-    liftIO $ do
-      model <- readIORef modelRef
-      model' <- updateModel (KeyEvent keyval) model
-      writeIORef modelRef model'
-      G.widgetQueueDraw drawingArea
-      return True
-  G.widgetShowAll window
-  G.mainGUI
+newtype Controller ev = Controller
+  { getController :: (CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (ev -> IO ())
+  }
 
--- | Same as 'ioMain' but without performing IO
-pureMain :: Style -> model -> (Event -> model -> model) -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO)) -> IO ()
-pureMain style initModel updateModel widget = ioMain style initModel (fmap (fmap return) updateModel) (return . widget)
+instance Contravariant Controller where
+  contramap f c = Controller $ \updater -> do
+    handler <- getController c updater
+    return $ \ev -> handler (f ev)
 
--- | For use with typical FRP frameworks
-asyncMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (Event -> IO ())) -> IO ()
-asyncMain init = do
+instance Monoid (Controller a) where
+  mempty = Controller $ \updater -> return $ const $ return ()
+  mappend c1 c2 = Controller $ \updater -> do
+    handler1 <- getController c1 updater
+    handler2 <- getController c2 updater
+    return $ \ev -> do
+      handler1 ev
+      handler2 ev
+
+runController :: Style
+              -> Controller Event
+              -> IO ()
+runController style controller = do
   G.initGUI
   widgetRef <- newIORef Nothing
-  style <- defaultStyle
   drawingArea <- G.drawingAreaNew
   window <- G.windowNew
   G.containerAdd window drawingArea
@@ -99,7 +86,7 @@ asyncMain init = do
   window `G.on` G.deleteEvent $ do
     liftIO G.mainQuit
     return False
-  handler <- init $ \widget -> G.postGUIAsync $ do
+  handler <- getController controller $ \widget -> G.postGUIAsync $ do
     modifyIORef widgetRef (const (Just widget))
     G.widgetQueueDraw drawingArea
   window `G.on` G.keyPressEvent $ do
@@ -107,8 +94,45 @@ asyncMain init = do
     liftIO $ handler (KeyEvent keyval)
     return True
   G.widgetShowAll window
-  G.widgetQueueDraw drawingArea
+  handler LoadEvent
   G.mainGUI
+
+-- | A main function that takes an initial model, a function to transform the model when an event arrives
+--   and a function from the model to a widget to display.
+ioMain :: Style
+       -> model
+       -> (Event -> model -> IO model)
+       -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO)))
+       -> IO ()
+ioMain style initModel updateModel widget =
+  runController style (syncIO initModel updateModel widget)
+
+-- | Same as 'ioMain' but without performing IO
+pureMain :: Style
+         -> model
+         -> (Event -> model -> model)
+         -> (model -> CairoWidget (V Dim) (V Dim) (StyleT IO))
+         -> IO ()
+pureMain style initModel updateModel widget =
+  ioMain style initModel (fmap (fmap return) updateModel) (return . widget)
+
+syncIO :: model
+       -> (ev -> model -> IO model)
+       -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO)))
+       -> Controller ev
+syncIO initModel updateModel widget = Controller $ \updater -> do
+  modelRef <- newIORef initModel
+  return $ \ev -> do
+    currentModel <- readIORef modelRef
+    nextModel <- updateModel ev currentModel
+    widget <- widget nextModel
+    updater widget
+
+-- | For use with typical FRP frameworks
+asyncMain :: Style
+          -> ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (Event -> IO ()))
+          -> IO ()
+asyncMain style init = runController style (Controller init)
 
 batchMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> Chan Event -> IO ()) -> IO ()
 batchMain runner = do

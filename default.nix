@@ -1,5 +1,6 @@
-{ mkDerivation, array, base, bifunctors, cairo, comonad, free, gtk3
-, JuicyPixels, ListZipper, mtl, pango, stdenv, text, vector
+{ mkDerivation, array, base, bifunctors, cairo, comonad
+, contravariant, free, gtk3, JuicyPixels, ListZipper, mtl, pango
+, stdenv, text, vector
 }:
 mkDerivation {
   pname = "disguise";
@@ -8,8 +9,8 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    array base bifunctors cairo comonad free gtk3 JuicyPixels
-    ListZipper mtl pango text vector
+    array base bifunctors cairo comonad contravariant free gtk3
+    JuicyPixels ListZipper mtl pango text vector
   ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [ base ];
