@@ -27,7 +27,7 @@ module Graphics.Disguise.Cairo.Widget
   , StyleT, Style (..), RGB (..)
   , runStyleT
   , Styling
-  , withStyling
+  , withStyling, withStylingM
   , font, color0, color1, color2
   , loadFont
   , reverseColors, reverseFgBg
@@ -91,6 +91,11 @@ type Styling = Endo Style
 
 withStyling :: (Monad f) => Styling -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
 withStyling styling = hoistWidget (local (appEndo styling))
+
+withStylingM :: (Monad f) => f Styling -> CairoWidget w h (StyleT f) -> CairoWidget w h (StyleT f)
+withStylingM styling = hoistWidget $ \stylet -> ReaderT $ \style -> do
+  s <- styling
+  runStyleT stylet (appEndo s style)
 
 loadFont :: String -> IO FontDescription
 loadFont fontname = liftIO $ fontDescriptionFromString fontname

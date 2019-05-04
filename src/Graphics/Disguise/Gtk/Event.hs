@@ -15,8 +15,9 @@ module Graphics.Disguise.Gtk.Event
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Data.Text as T
 
--- | We only support key events for now
-data Event = KeyEvent Gtk.KeyVal
+data Event
+  = LoadEvent
+  | KeyEvent Gtk.KeyVal
 
 keyName :: Gtk.KeyVal -> String
 keyName = T.unpack . Gtk.keyName
