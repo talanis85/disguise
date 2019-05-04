@@ -54,14 +54,16 @@ instance Contravariant Controller where
     handler <- getController c updater
     return $ \ev -> handler (f ev)
 
-instance Monoid (Controller a) where
-  mempty = Controller $ \updater -> return $ const $ return ()
-  mappend c1 c2 = Controller $ \updater -> do
+instance Semigroup (Controller a) where
+  c1 <> c2 = Controller $ \updater -> do
     handler1 <- getController c1 updater
     handler2 <- getController c2 updater
     return $ \ev -> do
       handler1 ev
       handler2 ev
+
+instance Monoid (Controller a) where
+  mempty = Controller $ \updater -> return $ const $ return ()
 
 runController :: Style
               -> Controller Event
