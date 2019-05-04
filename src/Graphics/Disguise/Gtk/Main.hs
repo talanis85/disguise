@@ -9,7 +9,10 @@ Stability   : experimental
 
 module Graphics.Disguise.Gtk.Main
   ( Controller (..)
-  , runController
+  , run
+  , syncIO
+  , Processor (..)
+  , keyProcessor
 
   , ioMain
   , pureMain
@@ -22,6 +25,8 @@ module Graphics.Disguise.Gtk.Main
 
 import Control.Concurrent
 import Control.Concurrent.Chan
+import Control.Concurrent.QSem
+import Control.Exception
 import Control.Monad.Trans
 import Data.Functor.Contravariant
 import Data.IORef
@@ -65,10 +70,35 @@ instance Semigroup (Controller a) where
 instance Monoid (Controller a) where
   mempty = Controller $ \updater -> return $ const $ return ()
 
-runController :: Style
-              -> Controller Event
-              -> IO ()
-runController style controller = do
+newtype Processor ev = Processor
+  { getProcessor :: G.Window -> (ev -> IO ()) -> IO ()
+  }
+
+instance Functor Processor where
+  fmap f e = Processor $ \window handler -> getProcessor e window (handler . f)
+
+instance Semigroup (Processor a) where
+  p1 <> p2 = Processor $ \window handler -> do
+    getProcessor p1 window handler
+    getProcessor p2 window handler
+
+instance Monoid (Processor a) where
+  mempty = Processor $ \window handler -> return ()
+
+keyProcessor :: Processor Event
+keyProcessor = Processor $ \window handler -> do
+  window `G.on` G.keyPressEvent $ do
+    keyval <- G.eventKeyVal
+    liftIO $ handler (KeyEvent keyval)
+    return True
+  return ()
+
+run :: Style
+    -> Processor e
+    -> Controller e
+    -> e
+    -> IO ()
+run style processor controller loadEvent = do
   G.initGUI
   widgetRef <- newIORef Nothing
   drawingArea <- G.drawingAreaNew
@@ -91,12 +121,9 @@ runController style controller = do
   handler <- getController controller $ \widget -> G.postGUIAsync $ do
     modifyIORef widgetRef (const (Just widget))
     G.widgetQueueDraw drawingArea
-  window `G.on` G.keyPressEvent $ do
-    keyval <- G.eventKeyVal
-    liftIO $ handler (KeyEvent keyval)
-    return True
   G.widgetShowAll window
-  handler LoadEvent
+  getProcessor processor window handler
+  handler loadEvent
   G.mainGUI
 
 -- | A main function that takes an initial model, a function to transform the model when an event arrives
@@ -107,7 +134,7 @@ ioMain :: Style
        -> (model -> IO (CairoWidget (V Dim) (V Dim) (StyleT IO)))
        -> IO ()
 ioMain style initModel updateModel widget =
-  runController style (syncIO initModel updateModel widget)
+  run style keyProcessor (syncIO initModel updateModel widget) LoadEvent
 
 -- | Same as 'ioMain' but without performing IO
 pureMain :: Style
@@ -124,9 +151,13 @@ syncIO :: model
        -> Controller ev
 syncIO initModel updateModel widget = Controller $ \updater -> do
   modelRef <- newIORef initModel
+  sem <- newQSem 1
   return $ \ev -> do
-    currentModel <- readIORef modelRef
-    nextModel <- updateModel ev currentModel
+    nextModel <- bracket_ (waitQSem sem) (signalQSem sem) $ do
+      currentModel <- readIORef modelRef
+      nextModel <- updateModel ev currentModel
+      writeIORef modelRef nextModel
+      return nextModel
     widget <- widget nextModel
     updater widget
 
@@ -134,7 +165,7 @@ syncIO initModel updateModel widget = Controller $ \updater -> do
 asyncMain :: Style
           -> ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> IO (Event -> IO ()))
           -> IO ()
-asyncMain style init = runController style (Controller init)
+asyncMain style init = run style keyProcessor (Controller init) LoadEvent
 
 batchMain :: ((CairoWidget (V Dim) (V Dim) (StyleT IO) -> IO ()) -> Chan Event -> IO ()) -> IO ()
 batchMain runner = do
