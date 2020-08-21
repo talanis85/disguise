@@ -1,4 +1,4 @@
-resolver: lts-12.14
+resolver: lts-12.26
 packages:
   - .
 extra-deps:
@@ -14,4 +14,4 @@ nix:
     - pango
     - gnome3.gtk
     - xorg.libX11
-    - xlibs.xproto
+    - xlibs.xorgproto
