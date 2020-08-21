@@ -3,7 +3,8 @@ module Graphics.Disguise.Cairo.Widget.Image
   ( flowImage
   , fixedImage
   , loadImage
-  , loadImageDefault
+  , loadImageBS
+  , defaultImage
   , emptyImage
   , CairoImage
   ) where
@@ -13,6 +14,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Array.MArray
 import Data.Bits
+import qualified Data.ByteString as BS
 import qualified Data.Vector.Storable as V
 import Data.Word
 import Foreign.Ptr
@@ -71,9 +73,16 @@ loadImage fp = do
       copyVectorToSurface (imageData img) surface
       return (Right (CairoImage surface))
 
-loadImageDefault :: FilePath -> IO CairoImage
-loadImageDefault fp = do
-  img <- loadImage fp
-  case img of
-    Left err -> CairoImage <$> createImageSurface FormatRGB24 1 1
-    Right img' -> return img'
+loadImageBS :: BS.ByteString -> IO (Either String CairoImage)
+loadImageBS bs = do
+  let r = decodeImage bs
+  case r of
+    Left err -> return (Left err)
+    Right img' -> do
+      let img = convertRGB8 img'
+      surface <- createImageSurface FormatRGB24 (imageWidth img) (imageHeight img)
+      copyVectorToSurface (imageData img) surface
+      return (Right (CairoImage surface))
+
+defaultImage :: IO CairoImage
+defaultImage = CairoImage <$> createImageSurface FormatRGB24 1 1
