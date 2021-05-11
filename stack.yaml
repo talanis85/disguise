@@ -1,17 +1,4 @@
-resolver: lts-12.26
+resolver: lts-16.31
 packages:
   - .
-extra-deps:
-  - ListZipper-1.2.0.2
-flags: {}
-extra-package-dbs: []
-nix:
-  enable: true
-  packages:
-    - zlib
-    - pkgconfig
-    - cairo
-    - pango
-    - gnome3.gtk
-    - xorg.libX11
-    - xlibs.xorgproto
+extra-deps: []

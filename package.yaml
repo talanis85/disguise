@@ -1,0 +1,32 @@
+name:                disguise
+version:             0.1.0.0
+github:              "talanis85/disguise"
+license:             BSD3
+author:              "Philip Kranz"
+maintainer:          "pk@pmlk.net"
+copyright:           "2021 Philip Kranz"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            Compositional GUI, base package.
+category:            User Interfaces
+description:         Please see the README on GitHub at <https://github.com/talanis85/disguise#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+tests:
+  disguise-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - disguise

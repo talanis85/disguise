@@ -8,14 +8,14 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 {- |
-Module      : Graphics.Disguise.Widget
+Module      : Disguise.Widget
 Description : Definition of a widget
 Copyright   : Philip Kranz, 2018
-License     : GPL-3
+License     : BSD3
 Maintainer  : pk@pmlk.net
 Stability   : experimental
 -}
-module Graphics.Disguise.Widget
+module Disguise.Widget
     ( 
       -- * Definition of widgets
       Widget (..)
@@ -25,6 +25,8 @@ module Graphics.Disguise.Widget
     , runFlowWidget
     , runFixedWidthWidget
     , runFixedHeightWidget
+      -- * bind for widgets
+    , BindWidget (..)
       -- * Transformations between different flavours
     , fixh, fixw
       -- * Transformation of the underlying functor
@@ -50,6 +52,30 @@ data Widget w h f a where
   FixedHeightWidget :: (w -> f (h, a)) -> Widget (V w) (F h) f a
 
 deriving instance (Functor f) => Functor (Widget w h f)
+
+-- | Use a monadic action in a widget.
+class BindWidget w where
+  bindWidget :: (Monad f) => (a -> w f b) -> f a -> w f b
+
+instance BindWidget (Widget (V w) (V h)) where
+  bindWidget f x = FlowWidget $ \w h -> do
+    x' <- x
+    let FlowWidget g = f x' in g w h
+
+instance BindWidget (Widget (F w) (F h)) where
+  bindWidget f x = FixedWidget $ do
+    x' <- x
+    let FixedWidget g = f x' in g
+
+instance BindWidget (Widget (V w) (F h)) where
+  bindWidget f x = FixedHeightWidget $ \w -> do
+    x' <- x
+    let FixedHeightWidget g = f x' in g w
+
+instance BindWidget (Widget (F w) (V h)) where
+  bindWidget f x = FixedWidthWidget $ \h -> do
+    x' <- x
+    let FixedWidthWidget g = f x' in g h
 
 type FlowWidget dim        = Widget (V dim) (V dim)
 type FixedWidget dim       = Widget (F dim) (F dim)
