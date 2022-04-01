@@ -60,22 +60,26 @@ class BindWidget w where
 instance BindWidget (Widget (V w) (V h)) where
   bindWidget f x = FlowWidget $ \w h -> do
     x' <- x
-    let FlowWidget g = f x' in g w h
+    case f x' of
+      FlowWidget g -> g w h
 
 instance BindWidget (Widget (F w) (F h)) where
   bindWidget f x = FixedWidget $ do
     x' <- x
-    let FixedWidget g = f x' in g
+    case f x' of
+      FixedWidget g -> g
 
 instance BindWidget (Widget (V w) (F h)) where
   bindWidget f x = FixedHeightWidget $ \w -> do
     x' <- x
-    let FixedHeightWidget g = f x' in g w
+    case f x' of
+      FixedHeightWidget g -> g w
 
 instance BindWidget (Widget (F w) (V h)) where
   bindWidget f x = FixedWidthWidget $ \h -> do
     x' <- x
-    let FixedWidthWidget g = f x' in g h
+    case f x' of
+      FixedWidthWidget g -> g h
 
 type FlowWidget dim        = Widget (V dim) (V dim)
 type FixedWidget dim       = Widget (F dim) (F dim)
